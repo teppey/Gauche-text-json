@@ -5,3 +5,4 @@ config.log
 config.status
 test.log
 Gauche-text-json.gpd
+autom4te.cache
