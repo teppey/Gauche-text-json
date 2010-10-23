@@ -25,7 +25,7 @@ LOCAL_PATHS = @LOCAL_PATHS@
 # Module-specific stuff
 PACKAGE   = Gauche-text-json
 
-ARCHFILES = text_json.$(SOEXT)
+ARCHFILES = 
 SCMFILES  = $(srcdir)/text/json.scm
 HEADERS   = 
 
