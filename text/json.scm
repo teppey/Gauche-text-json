@@ -5,11 +5,9 @@
   (use util.match)
   (export json-mime-type
           json-read
-          json-read-from-string
-          json-write
-          json-write-to-string))
-
+          json-write))
 (select-module text.json)
+
 
 ;; ---------------------------------------------------------
 ;; Scanner
@@ -116,6 +114,7 @@
 
 ;; ---------------------------------------------------------
 ;; Parser
+;;
 (define (parse-json input)
   (let* ((scanner (make-scanner input))
          (token (scanner)))
@@ -235,6 +234,7 @@
 
 ;; ---------------------------------------------------------
 ;; Writer
+;;
 (define (format-json obj)
   (cond ((null? obj))
         ((pair? obj)   (format-object obj))
@@ -306,17 +306,23 @@
 ;;
 (define-constant json-mime-type "application/json")
 
-(define (json-read :optional (input (current-input-port)))
-  (parse-json input))
+(define (json-read . input)
+  (let1 input (get-optional input (current-input-port))
+    (cond ((string? input)
+           (call-with-input-string input parse-json))
+          ((input-port? input)
+           (parse-json input))
+          (else
+            (error "json-read: argument must be string or input port")))))
 
-(define (json-read-from-string string)
-  (call-with-input-string string json-read))
-
-(define (json-write obj :optional (output (current-output-port)))
-  (with-output-to-port output (cut format-json obj)))
-
-(define (json-write-to-string obj)
-  (call-with-output-string (cut json-write obj <>)))
+(define (json-write obj . output)
+  (let1 output (get-optional output (current-output-port))
+    (cond ((eq? output 'string)
+           (with-output-to-string (pa$ format-json obj)))
+          ((output-port? output)
+           (with-output-to-port output (pa$ format-json obj)))
+          (else
+            (error "json-write: argument must be 'string or output port")))))
 
 
 (provide "text/json")

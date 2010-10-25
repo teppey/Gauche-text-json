@@ -12,11 +12,10 @@
 ;;; Original: ext/peg/test.scm
 ;;;
 
-
-(test* "write object" "{\"foo\":1,\"bar\":2}" (json-write-to-string '(("foo" . 1) ("bar" . 2))))
+(test* "write object" "{\"foo\":1,\"bar\":2}" (json-write '(("foo" . 1) ("bar" . 2)) 'string))
 
 (define (test-primitive str val)
-  (test* "primitive" `(("x" . ,val)) (json-read-from-string str)))
+  (test* "primitive" `(("x" . ,val)) (json-read str)))
 
 (test-primitive "{\"x\": 100 }" 100)
 (test-primitive "{\"x\" : -100}" -100)
@@ -43,7 +42,7 @@
            ("Height" . 125)
            ("Width"  . "100"))
           ("IDs" . #(116 943 234 38793))))
-       (json-read-from-string
+       (json-read
          "{
          \"Image\": {
          \"Width\":  800,
@@ -75,7 +74,7 @@
            ("State"     . "CA")
            ("Zip"       . "94085")
            ("Country"   . "US")))
-       (json-read-from-string
+       (json-read
          "[
            {
            \"precision\": \"zip\",
@@ -101,7 +100,7 @@
 
 (define (test-writer name obj)
   (test* name obj
-         (json-read-from-string (json-write-to-string obj))))
+         (json-read (json-write obj 'string))))
 
 (test-writer "writing an object"
              '(("Image"
