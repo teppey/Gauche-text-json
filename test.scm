@@ -8,10 +8,6 @@
 (use text.json)
 (test-module 'text.json)
 
-;;;
-;;; Original: ext/peg/test.scm
-;;;
-
 (test* "write object" "{\"foo\":1,\"bar\":2}" (json-write '(("foo" . 1) ("bar" . 2)) 'string))
 
 (define (test-primitive str val)
