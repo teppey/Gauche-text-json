@@ -210,10 +210,11 @@
       (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF))))))
 
 (define (parse-symbol value)
-  (let1 sym (string->symbol value)
-    (if (memq sym '(true false null))
-      sym
-      (error "unknown symbol" sym))))
+  (case (string->symbol value)
+    ((true)  #t)
+    ((false) #f)
+    ((null)  'null)
+    (else (error "unexpected symbol:" value))))
 
 (define (parse-number parts)
   (define (sign->number s)
@@ -241,11 +242,9 @@
         ((vector? obj) (format-array obj))
         ((number? obj) (format-number obj))
         ((string? obj) (format-string obj))
-        ((eq? obj 'true) (display 'true))
-        ((eq? obj 'false) (display 'false))
+        ((boolean? obj) (display (if obj 'true 'false)))
         ((eq? obj 'null) (display 'null))
-        (else
-          (error "unknown json object" obj))))
+        (else (error "unrecognize json object" obj))))
 
 ;; from rfc.json
 (define (format-number obj)
