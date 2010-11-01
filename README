@@ -45,14 +45,14 @@ Function: json-read &optional input
     input port or string. As for the data type of JSON, the mapping is done
     as follows:
 
-             JSON    |    return value
-        -------------+--------------
+             JSON    |   return value
+        -------------+-----------------
             object   |   assoc list
             array    |   vector
             number   |   number
             string   |   string
-            false    |   false (symbol)
-            true     |   true (symbol)
+            true     |   #t
+            false    |   #f
             null     |   null (symbol)
 
 
@@ -65,13 +65,13 @@ Function: json-write obj &optional output
     this function. As for argument `obj', the mapping is done in the
     opposite direction to json-read. That is:
 
-             obj      |    output(JSON)
-        --------------+-----------------
-          assoc list  |    object
-          vector      |    array
-          number      |    number
-          string      |    string
-          false       |    false
-          true        |    true
-          null        |    null
+             obj        |   output(JSON)
+        ----------------+----------------
+          assoc list    |   object
+          vector        |   array
+          number        |   number
+          string        |   string
+          #t            |   true
+          #f            |   false
+          null (symbol) |   null
 

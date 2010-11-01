@@ -8,9 +8,11 @@
 (use text.json)
 (test-module 'text.json)
 
-;;; The following code from Gauche-trunk/ext/peg/test.scm
+;;; The following code is base on Gauche-trunk/ext/peg/test.scm
 
 (test* "write object" "{\"foo\":1,\"bar\":2}" (json-write '(("foo" . 1) ("bar" . 2)) 'string))
+
+(test* "write boolean" "[true]" (json-write #(#t) 'string))
 
 (define (test-primitive str val)
   (test* "primitive" `(("x" . ,val)) (json-read str)))
@@ -24,8 +26,8 @@
 (test-primitive "{\"x\": 1.25e1 }" 12.5)
 (test-primitive "{\"x\":125e-1}" 12.5)
 (test-primitive "{\"x\":1250.0e-2}" 12.5)
-(test-primitive "{\"x\":  false  }" 'false)
-(test-primitive "{\"x\":true}" 'true)
+(test-primitive "{\"x\":  false  }" #f)
+(test-primitive "{\"x\":true}" #t)
 (test-primitive "{\"x\":null}" 'null)
 (test-primitive "{\"x\": \"abc\\\"\\\\\\/\\b\\f\\n\\r\\t\\u0040abc\"}"
                 "abc\"\\/\u0008\u000c\u000a\u000d\u0009@abc")

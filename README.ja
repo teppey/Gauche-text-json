@@ -50,8 +50,8 @@ Function: json-read &optional input
         配列         |   ベクタ
         数値         |   数値
         文字列       |   文字列
-        false        |   false(シンボル)
-        true         |   true(シンボル)
+        true         |   #t
+        false        |   #f
         null         |   null(シンボル)
 
 
@@ -62,16 +62,15 @@ Function: json-write obj &optional output
     れ、シンボルstringであった場合この手続きの戻り値として文字列が返されます。
     引数objはjson-readと逆方向にマッピングされます。すなわち
 
-             obj     |    出力(JSON)
-        -------------+-----------------
-          連想リスト |   オブジェクト
-          ベクタ     |   配列
-          数値       |   数値
-          文字列     |   文字列
-          false      |   false
-          true       |   true
-          null       |   null
+             obj         |    出力(JSON)
+        -----------------+-----------------
+          連想リスト     |   オブジェクト
+          ベクタ         |   配列
+          数値           |   数値
+          文字列         |   文字列
+          #t             |   true
+          #f             |   false
+          null(シンボル) |   null
 
     のように書き出されます。
-
 
