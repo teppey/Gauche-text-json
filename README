@@ -64,13 +64,13 @@ Function: json-write obj &optional output
     this function. As for argument `obj', the mapping is done in the
     opposite direction to json-read. That is:
 
-             obj     |    output(JSON)
-        -------------+-----------------
-         assoc list  |    object
-          vector     |    array
-          number     |    number
-          string     |    string
-          false      |    false
-          true       |    true
-          null       |    null
+             obj      |    output(JSON)
+        --------------+-----------------
+          assoc list  |    object
+          vector      |    array
+          number      |    number
+          string      |    string
+          false       |    false
+          true        |    true
+          null        |    null
 
