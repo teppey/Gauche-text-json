@@ -1,3 +1,10 @@
+;;;
+;;; text.json - read/write json
+;;;
+
+;;; RFC4627    Javascript Object Notation (JSON)
+;;; http://www.ietf.org/rfc/rfc4627
+
 (define-module text.json
   (use srfi-13)
   (use srfi-43)
@@ -230,7 +237,6 @@
       [(int frac #f)   (* sign (+ (string->number int) (string->number #`"0,frac")))]
       [(int #f expo)   (exponent sign (string->number int) 0 expo)]
       [(int frac expo) (exponent sign (string->number int) (string->number #`"0,frac") expo)])))
-
 
 
 ;; ---------------------------------------------------------
