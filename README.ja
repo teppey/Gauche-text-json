@@ -1,0 +1,76 @@
+これはRFC4627で定義されたJSON(Javascript Object Notation)を読み書きするモジュールです。
+
+
+動作環境:
+
+    Gauche 0.9 以降
+
+インストール:
+
+    From tarball
+
+        $ gauche-package install [-S root] Gauche-text-json-0.1.tgz
+
+    From source
+
+        $ git clone git://github.com/teppey/Gauche-text-json.git
+        $ cd Gauche-text-json
+        $ ./DIST gen
+        $ ./configure
+        $ make
+        $ make -s check
+        $ [sudo] make install
+
+
+Module API:
+
+Module text.json
+================
+
+このモジュールはRFC4727で定義されたJSON(Javascript Object Notation)を扱う手
+続きを提供します。
+
+[RFC4627] http://www.ietf.org/rfc/rfc4627
+
+Constant: json-mime-type
+
+    "application/json", that is the MIME type of JSON.
+
+
+Function: json-read &optional input
+
+    現在の入力ポートから読んだ文字列をJSONとしてパースし、結果を返します。省
+    略可能な引数inputは入力ポートか文字列で、指定された場合はそれを入力とし
+    てパースします。JSONのデータ型は以下のようにマッピングされます。
+
+             JSON    |    戻り値
+        -------------+--------------
+        オブジェクト |   連想リスト
+        配列         |   ベクタ
+        数値         |   数値
+        文字列       |   文字列
+        false        |   false(シンボル)
+        true         |   true(シンボル)
+        null         |   null(シンボル)
+
+
+Function: json-write obj &optional output
+
+    objをJSONとして現在の出力ポートに書き出します。省略可能な引数outputは出
+    力ポートかシンボルstringで、出力ポートであれば結果はそのポートに書き出さ
+    れ、シンボルstringであった場合この手続きの戻り値として文字列が返されます。
+    引数objはjson-readと逆方向にマッピングされます。すなわち
+
+             obj     |    出力(JSON)
+        -------------+-----------------
+          連想リスト |   オブジェクト
+          ベクタ     |   配列
+          数値       |   数値
+          文字列     |   文字列
+          false      |   false
+          true       |   true
+          null       |   null
+
+    のように書き出されます。
+
+
