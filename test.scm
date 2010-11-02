@@ -8,7 +8,7 @@
 (use text.json)
 (test-module 'text.json)
 
-;;; The following code is base on Gauche-trunk/ext/peg/test.scm
+;;; The following code from Gauche-trunk/ext/peg/test.scm
 
 (test* "write object" "{\"foo\":1,\"bar\":2}" (json-write '(("foo" . 1) ("bar" . 2)) #f))
 
