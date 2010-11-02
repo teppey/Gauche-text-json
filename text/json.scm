@@ -61,7 +61,7 @@
                 (read-char)
                 (values (cdr p) #f)))
           (else
-            (error "invalid json form")))))
+            (error "invalid JSON form")))))
 
 (define (get-string-token)
   (read-char)
@@ -130,7 +130,7 @@
     (case (token-type token)
       ((begin-object) (parse-object '() scanner values))
       ((begin-array)  (parse-array '() scanner values))
-      (else           (error "json must be object or array")))))
+      (else           (error "JSON must be object or array")))))
 
 (define (parse-any scanner cont)
   (let1 token (scanner)
@@ -139,8 +139,8 @@
       ((begin-array)  (parse-array '() scanner cont))
       ((string)       (cont (parse-string (token-value token))))
       ((number)       (cont (parse-number (token-value token))))
-      ((symbol)      (cont (parse-symbol (token-value token))))
-      (else           (error "bad json syntax")))))
+      ((symbol)       (cont (parse-symbol (token-value token))))
+      (else           (error "invalid JSON form")))))
 
 (define (parse-object entries scanner cont)
   (let1 token (scanner)
@@ -150,13 +150,13 @@
       [(string)
        (let ((sep (scanner)))
          (unless (eq? (token-type sep) 'name-separator)
-           (error "object key-value pair must separated `:'"))
+           (error "invalid JSON object form"))
          (let ((key (parse-string (token-value token))))
            (parse-any scanner
                       (lambda (value)
                         (parse-object (acons key value entries)
                                       scanner cont)))))]
-      [else (error "invalid json object syntax" token)]
+      [else (error "invalid JSON object form" token)]
       )))
 
 (define (parse-array elements scanner cont)
@@ -201,7 +201,7 @@
       (push! chars (read-char)))
     (let ((n (string->number (list->string (reverse! chars)) 16)))
       (cond ((not n)
-             (error "invalid unicode syntax"))
+             (error "invalid unicode form"))
             ((<= #xD800 n #xDBFF)
              (surrogate-pair n))
             (else
@@ -223,7 +223,7 @@
     ((true)  #t)
     ((false) #f)
     ((null)  'null)
-    (else (error "unexpected symbol:" value))))
+    (else (error "unexpected symbol" value))))
 
 (define (parse-number parts)
   (define (sign->number s)
@@ -252,7 +252,7 @@
         ((string? obj) (format-string obj))
         ((boolean? obj) (display (if obj 'true 'false)))
         ((eq? obj 'null) (display 'null))
-        (else (error "unrecognize json object" obj))))
+        (else (error "unrecognize object" obj))))
 
 ;; from rfc.json
 (define (format-number obj)
