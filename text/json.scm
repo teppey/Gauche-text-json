@@ -189,8 +189,10 @@
                        ((char=? cc #\/) (loop (read-char) (cons cc chars)))
                        ((char=? cc #\b) (loop (read-char) (cons #\x08 chars)))
                        ((char=? cc #\f) (loop (read-char) (cons #\page chars)))
-                       ((char=? cc #\n) (loop (read-char) (cons #\newline chars)))
-                       ((char=? cc #\r) (loop (read-char) (cons #\return chars)))
+                       ((char=? cc #\n)
+                        (loop (read-char) (cons #\newline chars)))
+                       ((char=? cc #\r)
+                        (loop (read-char) (cons #\return chars)))
                        ((char=? cc #\t) (loop (read-char) (cons #\tab chars)))
                        (else (loop (read-char) (cons cc chars))))))
               (else (loop (read-char) (cons c chars))))))))
@@ -232,13 +234,19 @@
     (rxmatch-let (#/[eE]([-+])?(\d+)/ expo)
       (#f exp-sign factor)
       (* sign (* (exact->inexact (+ int frac))
-                 (expt 10 (* (sign->number exp-sign) (string->number factor)))))))
+                 (expt 10 (* (sign->number exp-sign)
+                             (string->number factor)))))))
   (let1 sign (sign->number (car parts))
     (match (cdr parts)
-      [(int #f #f)     (* sign (string->number int))]
-      [(int frac #f)   (* sign (+ (string->number int) (string->number #`"0,frac")))]
-      [(int #f expo)   (exponent sign (string->number int) 0 expo)]
-      [(int frac expo) (exponent sign (string->number int) (string->number #`"0,frac") expo)])))
+      [(int #f #f)
+       (* sign (string->number int))]
+      [(int frac #f)
+       (* sign (+ (string->number int) (string->number #`"0,frac")))]
+      [(int #f expo)
+       (exponent sign (string->number int) 0 expo)]
+      [(int frac expo)
+       (exponent sign (string->number int) (string->number #`"0,frac") expo)]
+      )))
 
 
 ;; ---------------------------------------------------------
