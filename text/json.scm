@@ -318,16 +318,16 @@
           ((input-port? input)
            (parse-json input))
           (else
-            (error "json-read: argument must be string or input port")))))
+            (error "input port or string required, but got" input)))))
 
 (define (json-write obj . output)
   (let1 output (get-optional output (current-output-port))
-    (cond ((eq? output 'string)
+    (cond ((not output)
            (with-output-to-string (pa$ format-json obj)))
           ((output-port? output)
            (with-output-to-port output (pa$ format-json obj)))
           (else
-            (error "json-write: argument must be 'string or output port")))))
+            (error "output port required, but got" output)))))
 
 
 (provide "text/json")

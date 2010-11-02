@@ -58,12 +58,11 @@ Function: json-read &optional input
 
 Function: json-write obj &optional output
 
-    Argument `obj' is written to a current output port as JSON. As for
-    argument `output' that can be omitted, if it is output port or symbol
-    `string', and an output port, the result is written to the port, and
-    when it is symbol `string', the string is returned as a return value of
-    this function. As for argument `obj', the mapping is done in the
-    opposite direction to json-read. That is:
+    `obj' is written to a current output port as JSON string. Optional
+    argument `output' is output port or #f. If `output' is output port, the
+    result is written to the port.  If `output' is #f, the string is
+    returned as a return value of this function. As for argument `obj', the
+    mapping is done in the opposite direction to json-read. That is:
 
              obj        |   output(JSON)
         ----------------+----------------

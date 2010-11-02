@@ -10,9 +10,9 @@
 
 ;;; The following code is base on Gauche-trunk/ext/peg/test.scm
 
-(test* "write object" "{\"foo\":1,\"bar\":2}" (json-write '(("foo" . 1) ("bar" . 2)) 'string))
+(test* "write object" "{\"foo\":1,\"bar\":2}" (json-write '(("foo" . 1) ("bar" . 2)) #f))
 
-(test* "write boolean" "[true]" (json-write #(#t) 'string))
+(test* "write boolean" "[true]" (json-write #(#t) #f))
 
 (define (test-primitive str val)
   (test* "primitive" `(("x" . ,val)) (json-read str)))
@@ -100,7 +100,7 @@
 
 (define (test-writer name obj)
   (test* name obj
-         (json-read (json-write obj 'string))))
+         (json-read (json-write obj #f))))
 
 (test-writer "writing an object"
              '(("Image"

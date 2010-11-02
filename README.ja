@@ -57,10 +57,10 @@ Function: json-read &optional input
 
 Function: json-write obj &optional output
 
-    objをJSONとして現在の出力ポートに書き出します。省略可能な引数outputは出
-    力ポートかシンボルstringで、出力ポートであれば結果はそのポートに書き出さ
-    れ、シンボルstringであった場合この手続きの戻り値として文字列が返されます。
-    引数objはjson-readと逆方向にマッピングされます。すなわち
+    objをJSON文字列として現在の出力ポートに書き出します。省略可能な引数
+    outputには出力先を指定します。 outputが出力ポートであれば、結果はそのポー
+    トに書き出されます。outputが#fであれば、結果は文字列としてjson-writeから
+    返されます。objはjson-readと逆にマッピングされます。すなわち
 
              obj         |    出力(JSON)
         -----------------+-----------------
@@ -72,5 +72,5 @@ Function: json-write obj &optional output
           #f             |   false
           null(シンボル) |   null
 
-    のように書き出されます。
+    のように出力されます。
 
