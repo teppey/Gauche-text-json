@@ -2,7 +2,7 @@
 ;;; text.json - read/write json
 ;;;
 
-;;; RFC4627    Javascript Object Notation (JSON)
+;;; RFC4627  Javascript Object Notation (JSON)
 ;;; http://www.ietf.org/rfc/rfc4627
 
 (define-module text.json
@@ -67,7 +67,9 @@
   (read-char)
   (let loop ((c (read-char))
              (out (open-output-string)))
-    (cond ((char=? c #\")
+    (cond ((eof-object? c)
+           (error "unexpected EOF at" (get-output-string out)))
+          ((char=? c #\")
            (values 'string (get-output-string out)))
           ((char=? c #\\)
            (write-char c out)
