@@ -14,6 +14,9 @@
 
 (test* "write boolean" "[true]" (json-write #(#t) #f))
 
+(test* "read empty object" '() (json-read "{}"))
+(test* "write empty object" "{}" (json-write (json-read "{}") #f))
+
 (define (test-primitive str val)
   (test* "primitive" `(("x" . ,val)) (json-read str)))
 
