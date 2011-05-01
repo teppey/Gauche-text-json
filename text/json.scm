@@ -253,8 +253,7 @@
 ;; Writer
 ;;
 (define (format-json obj)
-  (cond ((null? obj))
-        ((pair? obj)   (format-object obj))
+  (cond ((list? obj)   (format-object obj))
         ((vector? obj) (format-array obj))
         ((number? obj) (format-number obj))
         ((string? obj) (format-string obj))
