@@ -29,6 +29,14 @@
   (test* "array is <sequence>" #t (is-a? arr <sequence>))
   (test* "array size" 3 (size-of arr))
   (test* "array ref" 'a (~ arr 0))
+  (test* "coerce" '(a b c) (coerce-to <list> arr))
+  (let1 subarr (subseq arr 1 3)
+    (test* "subseq size" 2 (size-of subarr))
+    (test* "subseq ref" 'b (~ subarr 0))
+    (test* "subseq ref" 'c (~ subarr 1))
+    (test* "subseq out of range" (test-error) (~ subarr 2))
+    (test* "map" '((0 . b) (1 . c)) (map-to-with-index <list> cons subarr))
+    )
   )
 
 ;;; The following code from Gauche-trunk/ext/peg/test.scm
