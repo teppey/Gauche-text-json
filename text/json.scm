@@ -10,9 +10,10 @@
   (use srfi-43)
   (use text.parse)
   (use util.match)
-  (export json-mime-type
-          json-read
-          json-write))
+  (export-all))
+;  (export json-mime-type
+;          json-read
+;          json-write))
 (select-module text.json)
 
 
@@ -313,6 +314,82 @@
           (display ",")))
       obj))
   (display "]"))
+
+;; -------------------------
+;; JSON Container Parameters
+;;
+(use gauche.parameter)
+(use gauche.dictionary)
+(use gauche.sequence)
+(use srfi-1 :only (remove))
+
+;; ---------------------------------------------------------
+;; Class: json-default-object
+;;
+(define-class <json-default-object> (<dictionary>)
+  ((alist :init-value '())))
+
+;; <dictionary> interface
+(define-method dict-get ((object <json-default-object>) key . default)
+  (if-let1 p (assoc key (~ object 'alist))
+    (cdr p)
+    (if (null? default) #f (car default))))
+
+(define-method dict-put! ((object <json-default-object>) key value)
+  (dict-delete! object key)
+  (set! (~ object 'alist) (acons key value (~ object 'alist))))
+
+(define-method dict-exists? ((object <json-default-object>) key)
+  (boolean (assoc key (~ object 'alist))))
+
+(define-method dict-delete! ((object <json-default-object>) key)
+  (set! (~ object 'alist) (remove (^p (equal? (car p) key)) (~ object 'alist))))
+
+(define-method dict-fold ((object <json-default-object>) proc seed)
+  (fold (^(pair seed)
+          (proc (car pair) (cdr pair) seed))
+        seed (~ object 'alist)))
+
+;; ---------------------------------------------------------
+;; Class: json-default-array
+;;
+(define-class <json-default-array-meta> (<class>) ())
+
+(define-class <json-default-array> (<sequence>)
+  ([elements :init-value '() :init-keyword :elements]
+   [len      :init-value 0   :init-keyword :len])
+  :metaclass <json-default-array-meta>)
+
+;; <collection> interface
+(define-method call-with-iterator ((array <json-default-array>) proc . rest)
+  (let* ([pos (get-keyword :start rest 0)]
+         [len (~ array 'len)]
+         [end? (lambda () (>= pos len))]
+         [next (lambda () (begin0 (list-ref (~ array 'elements) pos)
+                            (inc! pos)))])
+    (proc end? next)))
+
+(define-method call-with-builder ((class <json-default-array-meta>) proc . _)
+  (let* ([elements '()]
+         [add! (lambda (e) (push! elements e))]
+         [get (lambda ()
+                (let1 len (length elements)
+                  (make class :elements (reverse! elements) :len len)))])
+    (proc add! get)))
+
+;; <sequence> interface
+(define-method referencer ((array <json-default-array>) index . rest)
+  (apply list-ref (~ array 'elements) index rest))
+
+(define-method modifier ((array <json-default-array>) index value)
+  (set! (~ (~ array 'elements) index) value))
+
+
+;; ---------------------------------------------------------
+;; Default Container constructor
+;;
+(define json-object-ctor (make-parameter (lambda () (make <json-default-object>))))
+(define json-array-ctor  (make-parameter (lambda () (make <json-default-array>))))
 
 
 ;; ---------------------------------------------------------
