@@ -330,7 +330,7 @@
 ;; Class: json-default-object
 ;;
 (define-class <json-default-object> (<dictionary>)
-  ((alist :init-value '())))
+  ([alist :init-value '()]))
 
 ;; <dictionary> interface
 (define-method dict-get ((object <json-default-object>) key . default)
