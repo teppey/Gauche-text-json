@@ -3,10 +3,33 @@
 ;;;
 
 (use gauche.test)
+(use gauche.collection)
+(use gauche.dictionary)
+(use gauche.sequence)
 
 (test-start "text.json")
 (use text.json)
 (test-module 'text.json)
+
+(test-section "default object class")
+(let ((obj (make <json-default-object>)))
+  (test* "object is <dictionary>" #t (is-a? obj <dictionary>))
+  (dict-put! obj "foo" 1)
+  (dict-put! obj "bar" 'a)
+  (dict-put! obj "baz" "b")
+  (test* "lookup" 1 (dict-get obj "foo"))
+  (test* "lookup(missing)" #f (dict-get obj 'foo))
+  (test* "lookup(fallback)" 'nothing (dict-get obj 'foo 'nothing))
+  (dict-delete! obj "bar")
+  (test* "delete" #f (dict-get obj "bar"))
+  )
+(test-section "default array class")
+(let ((arr (coerce-to <json-default-array> '(a b c))))
+  (test* "array is <collection>" #t (is-a? arr <collection>))
+  (test* "array is <sequence>" #t (is-a? arr <sequence>))
+  (test* "array size" 3 (size-of arr))
+  (test* "array ref" 'a (~ arr 0))
+  )
 
 ;;; The following code from Gauche-trunk/ext/peg/test.scm
 
