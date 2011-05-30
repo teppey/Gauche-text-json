@@ -393,8 +393,8 @@
 ;; ---------------------------------------------------------
 ;; Default Container constructor
 ;;
-(define json-object-ctor (make-parameter (lambda () (make <json-default-object>))))
-(define json-array-ctor  (make-parameter (lambda () (make <json-default-array>))))
+(define json-object-ctor (make-parameter (cut make <json-default-object>)))
+(define json-array-ctor  (make-parameter (cut make <json-default-array>)))
 
 
 ;; ---------------------------------------------------------
