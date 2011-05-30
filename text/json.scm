@@ -381,11 +381,13 @@
     (proc add! get)))
 
 ;; <sequence> interface
-(define-method referencer ((array <json-default-array>) index . rest)
-  (apply list-ref (~ array 'elements) index rest))
+(define-method referencer ((array <json-default-array>))
+  (lambda (array index . rest)
+    (apply list-ref (~ array 'elements) index rest)))
 
-(define-method modifier ((array <json-default-array>) index value)
-  (set! (~ (~ array 'elements) index) value))
+(define-method modifier ((array <json-default-array>))
+  (lambda (array index value)
+    (set! (~ (~ array 'elements) index) value)))
 
 
 ;; ---------------------------------------------------------
