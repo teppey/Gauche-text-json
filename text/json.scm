@@ -12,8 +12,7 @@
   (use util.match)
   (export json-object-ctor
           json-array-class
-          <json-default-object>
-          <json-default-array>
+          <alist>
           json-mime-type
           json-read
           json-write))
@@ -155,7 +154,8 @@
 (define (parse-object dict scanner cont)
   (let1 token (scanner)
     (case (token-type token)
-      [(end-object)      (unwrap dict)]
+      [(end-object)      (or (and (is-a? dict <alist>) (unwrap dict))
+                             dict)]
       [(value-separator) (parse-object dict scanner cont)]
       [(string)
        (let ((sep (scanner)))
@@ -170,7 +170,7 @@
 (define (parse-array add! get scanner cont)
   (let1 token (scanner)
     (case (token-type token)
-      [(end-array)       (unwrap (get))]
+      [(end-array)       (get)]
       [(value-separator) (parse-array add! get scanner cont)]
       [else (unget-token token)
             (add! (parse-any scanner values))
@@ -326,56 +326,40 @@
 (use gauche.sequence)
 (use srfi-1 :only (remove))
 
-;; ---------------------------------------------------------
-;; Container Base Class
-;;
-(define-class <json-default-container> ()
-  ())
-
-;; defined in subclasses
-(define-method unwrap-container ((container <json-default-container>)) #f)
+(define json-object-ctor (make-parameter (cut make <alist>)))
+(define json-array-class  (make-parameter <vector>))
 
 ;; ---------------------------------------------------------
-;; Class: json-default-object
+;; associate list wrapper class
 ;;
-(define-class <json-default-object> (<json-default-container> <dictionary>)
+(define-class <alist> (<dictionary>)
   ([alist :init-value '()]))
 
-(define-method unwrap-container ((object <json-default-object>))
+(define-method unwrap ((object <alist>))
   (reverse (~ object 'alist)))
 
 ;; <dictionary> interface
-(define-method dict-get ((object <json-default-object>) key . default)
+(define-method dict-get ((object <alist>) key . default)
   (if-let1 p (assoc key (~ object 'alist))
     (cdr p)
     (if (null? default) #f (car default))))
 
-(define-method dict-put! ((object <json-default-object>) key value)
+(define-method dict-put! ((object <alist>) key value)
   (dict-delete! object key)
   (set! (~ object 'alist) (acons key value (~ object 'alist))))
 
-(define-method dict-exists? ((object <json-default-object>) key)
+(define-method dict-exists? ((object <alist>) key)
   (boolean (assoc key (~ object 'alist))))
 
-(define-method dict-delete! ((object <json-default-object>) key)
+(define-method dict-delete! ((object <alist>) key)
   (set! (~ object 'alist) (remove (^p (equal? (car p) key)) (~ object 'alist))))
 
-(define-method dict-fold ((object <json-default-object>) proc seed)
+(define-method dict-fold ((object <alist>) proc seed)
   (fold (^(pair seed)
           (proc (car pair) (cdr pair) seed))
         seed (~ object 'alist)))
 
 
-;; ---------------------------------------------------------
-;; Default Container constructor
-;;
-(define json-object-ctor (make-parameter (cut make <json-default-object>)))
-(define json-array-class  (make-parameter <vector>))
-
-(define (unwrap obj)
-  (if (is-a? obj <json-default-container>)
-    (unwrap-container obj)
-    obj))
 
 
 ;; ---------------------------------------------------------
