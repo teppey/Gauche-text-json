@@ -365,51 +365,12 @@
           (proc (car pair) (cdr pair) seed))
         seed (~ object 'alist)))
 
-;; ---------------------------------------------------------
-;; Class: json-default-array
-;;
-(define-class <json-default-array-meta> (<class>) ())
-
-(define-class <json-default-array> (<json-default-container> <sequence>)
-  ([elements :init-value '() :init-keyword :elements]
-   [len      :init-value 0   :init-keyword :len])
-  :metaclass <json-default-array-meta>)
-
-(define-method unwrap-container ((array <json-default-array>))
-  (list->vector (~ array 'elements)))
-
-;; <collection> interface
-(define-method call-with-iterator ((array <json-default-array>) proc . rest)
-  (let* ([pos (get-keyword :start rest 0)]
-         [len (~ array 'len)]
-         [end? (lambda () (>= pos len))]
-         [next (lambda () (begin0 (list-ref (~ array 'elements) pos)
-                            (inc! pos)))])
-    (proc end? next)))
-
-(define-method call-with-builder ((class <json-default-array-meta>) proc . _)
-  (let* ([elements '()]
-         [add! (lambda (e) (push! elements e))]
-         [get (lambda ()
-                (let1 len (length elements)
-                  (make class :elements (reverse! elements) :len len)))])
-    (proc add! get)))
-
-;; <sequence> interface
-(define-method referencer ((array <json-default-array>))
-  (lambda (array index . rest)
-    (apply list-ref (~ array 'elements) index rest)))
-
-(define-method modifier ((array <json-default-array>))
-  (lambda (array index value)
-    (set! (~ (~ array 'elements) index) value)))
-
 
 ;; ---------------------------------------------------------
 ;; Default Container constructor
 ;;
 (define json-object-ctor (make-parameter (cut make <json-default-object>)))
-(define json-array-class  (make-parameter <json-default-array>))
+(define json-array-class  (make-parameter <vector>))
 
 (define (unwrap obj)
   (if (is-a? obj <json-default-container>)
