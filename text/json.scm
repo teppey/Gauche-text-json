@@ -10,8 +10,8 @@
   (use srfi-43)
   (use text.parse)
   (use util.match)
-  (export json-object-ctor
-          json-array-class
+  (export json-object
+          json-array
           <alist>
           json-mime-type
           json-read
@@ -326,8 +326,8 @@
 (use gauche.sequence)
 (use srfi-1 :only (remove))
 
-(define json-object-ctor (make-parameter (cut make <alist>)))
-(define json-array-class  (make-parameter <vector>))
+(define json-object (make-parameter (cut make <alist>)))
+(define json-array  (make-parameter <vector>))
 
 ;; ---------------------------------------------------------
 ;; associate list wrapper class
