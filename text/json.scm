@@ -11,7 +11,7 @@
   (use text.parse)
   (use util.match)
   (export json-object-ctor
-          json-array-ctor
+          json-array-class
           <json-default-object>
           <json-default-array>
           json-mime-type
@@ -132,49 +132,49 @@
   (let* ((scanner (make-scanner input))
          (token (scanner)))
     (case (token-type token)
-      ((begin-object) (parse-object '() scanner values))
-      ((begin-array)  (parse-array '() scanner values))
+      ((begin-object) (parse-object ((json-object-ctor)) scanner values))
+      ((begin-array)
+       (call-with-builder (json-array-class)
+         (lambda (add! get)
+           (parse-array add! get scanner values))))
       (else           (error "JSON must be object or array")))))
 
 (define (parse-any scanner cont)
   (let1 token (scanner)
     (case (token-type token)
-      ((begin-object) (parse-object '() scanner cont))
-      ((begin-array)  (parse-array '() scanner cont))
+      ((begin-object) (parse-object ((json-object-ctor)) scanner cont))
+      ((begin-array)
+       (call-with-builder (json-array-class)
+         (lambda (add! get)
+           (parse-array add! get scanner values))))
       ((string)       (cont (parse-string (token-value token))))
       ((number)       (cont (parse-number (token-value token))))
       ((symbol)       (cont (parse-symbol (token-value token))))
       (else           (error "invalid JSON form")))))
 
-(define (parse-object entries scanner cont)
+(define (parse-object dict scanner cont)
   (let1 token (scanner)
     (case (token-type token)
-      [(end-object)      (cont (reverse! entries))]
-      [(value-separator) (parse-object entries scanner cont)]
+      [(end-object)      (unwrap dict)]
+      [(value-separator) (parse-object dict scanner cont)]
       [(string)
        (let ((sep (scanner)))
          (unless (eq? (token-type sep) 'name-separator)
            (error "invalid JSON object form"))
          (let ((key (parse-string (token-value token))))
-           (parse-any scanner
-                      (lambda (value)
-                        (parse-object (acons key value entries)
-                                      scanner cont)))))]
+           (dict-put! dict key (parse-any scanner values))
+           (parse-object dict scanner cont)))]
       [else (error "invalid JSON object form" token)]
       )))
 
-(define (parse-array elements scanner cont)
+(define (parse-array add! get scanner cont)
   (let1 token (scanner)
     (case (token-type token)
-      [(end-array)       (cont (list->vector (reverse! elements)))]
-      [(value-separator) (parse-array elements scanner cont)]
+      [(end-array)       (unwrap (get))]
+      [(value-separator) (parse-array add! get scanner cont)]
       [else (unget-token token)
-            (parse-any scanner
-                       (lambda (elt)
-                         (parse-array (cons elt elements)
-                                      scanner
-                                      cont)))]
-      )))
+            (add! (parse-any scanner values))
+            (parse-array add! get scanner cont)])))
 
 (define (parse-string value)
   (with-string-io value
@@ -409,7 +409,7 @@
 ;; Default Container constructor
 ;;
 (define json-object-ctor (make-parameter (cut make <json-default-object>)))
-(define json-array-ctor  (make-parameter (cut make <json-default-array>)))
+(define json-array-class  (make-parameter <json-default-array>))
 
 (define (unwrap obj)
   (if (is-a? obj <json-default-container>)
