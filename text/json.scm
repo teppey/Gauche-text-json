@@ -327,10 +327,22 @@
 (use srfi-1 :only (remove))
 
 ;; ---------------------------------------------------------
+;; Container Base Class
+;;
+(define-class <json-default-container> ()
+  ())
+
+;; defined in subclasses
+(define-method unwrap-container ((container <json-default-container>)) #f)
+
+;; ---------------------------------------------------------
 ;; Class: json-default-object
 ;;
-(define-class <json-default-object> (<dictionary>)
+(define-class <json-default-object> (<json-default-container> <dictionary>)
   ([alist :init-value '()]))
+
+(define-method unwrap-container ((object <json-default-object>))
+  (reverse (~ object 'alist)))
 
 ;; <dictionary> interface
 (define-method dict-get ((object <json-default-object>) key . default)
@@ -358,10 +370,13 @@
 ;;
 (define-class <json-default-array-meta> (<class>) ())
 
-(define-class <json-default-array> (<sequence>)
+(define-class <json-default-array> (<json-default-container> <sequence>)
   ([elements :init-value '() :init-keyword :elements]
    [len      :init-value 0   :init-keyword :len])
   :metaclass <json-default-array-meta>)
+
+(define-method unwrap-container ((array <json-default-array>))
+  (list->vector (~ array 'elements)))
 
 ;; <collection> interface
 (define-method call-with-iterator ((array <json-default-array>) proc . rest)
@@ -395,6 +410,11 @@
 ;;
 (define json-object-ctor (make-parameter (cut make <json-default-object>)))
 (define json-array-ctor  (make-parameter (cut make <json-default-array>)))
+
+(define (unwrap obj)
+  (if (is-a? obj <json-default-container>)
+    (unwrap-container obj)
+    obj))
 
 
 ;; ---------------------------------------------------------
