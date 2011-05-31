@@ -6,6 +6,7 @@
 (use gauche.collection)
 (use gauche.dictionary)
 (use gauche.sequence)
+(use gauche.parameter)
 
 (test-start "text.json")
 (use text.json)
@@ -23,6 +24,34 @@
   (dict-delete! obj "bar")
   (test* "delete" #f (dict-get obj "bar"))
   )
+
+;; Parameterize Container
+(test-section "parameterize")
+(define json-text-sample
+  "{
+    \"Image\": {
+          \"Width\":  800,
+          \"Height\": 600,
+          \"Title\":  \"View from 15th Floor\",
+          \"Thumbnail\": {
+              \"Url\":    \"http://www.example.com/image/481989943\",
+              \"Height\": 125,
+              \"Width\":  \"100\"
+          },
+          \"IDs\": [116, 943, 234, 38793]
+        }
+   }")
+;; Reader
+(parameterize ([json-object (cut make-hash-table 'string=?)]
+               [json-array  <list>])
+  (let1 o (json-read json-text-sample)
+    (test* "hashtable?" #t (is-a? o <hash-table>))
+    (test* "hashtable?" #t (is-a? (~ o "Image") <hash-table>))
+    (test* "list?" #t (is-a? (~ o "Image" "IDs") <list>))
+    (test* "lookup" "100" (~ o "Image" "Tumbnail" "Width"))
+    ))
+;; Writer
+
 
 ;;; The following code from Gauche-trunk/ext/peg/test.scm
 
