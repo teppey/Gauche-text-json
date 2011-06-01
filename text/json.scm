@@ -252,6 +252,8 @@
 ;; ---------------------------------------------------------
 ;; Writer
 ;;
+(use gauche.parameter)
+(define json-indent-width (make-parameter 0))
 (define (format-json obj)
   (cond ((list? obj)   (format-object obj))
         ((vector? obj) (format-array obj))
@@ -292,26 +294,39 @@
   (display "\""))
 
 ;; from rfc.json
+(define (indent)
+  (display (make-string (json-indent-width) #\space)))
 (define (format-object obj)
-  (display "{")
-  (fold (lambda (pair comma)
-          (display comma)
-          (format-string (car pair))
-          (display ":")
-          (format-json (cdr pair))
-          ",")
-        "" obj)
-  (display "}"))
+  (display "{") (newline)
+  (parameterize ((json-indent-width (+ 2 (json-indent-width))))
+    (fold (lambda (pair comma)
+            (display comma)
+            (indent)
+            (format-string (car pair))
+            (display ": ")
+            (format-json (cdr pair))
+            ",\n")
+          "" obj))
+  (newline)
+  (indent)
+  (display "}")
+  )
+
 
 (define (format-array obj)
-  (display "[")
-  (let1 last (- (vector-length obj) 1)
-    (vector-for-each
-      (lambda (index elt)
-        (format-json elt)
-        (when (< index last)
-          (display ",")))
-      obj))
+  (display "[") (newline)
+  (parameterize ((json-indent-width (+ 2 (json-indent-width))))
+    (let1 last (- (vector-length obj) 1)
+      (vector-for-each
+        (lambda (index elt)
+          (indent)
+          (format-json elt)
+          (when (< index last)
+            (display ",")
+            (newline)))
+        obj)))
+  (newline)
+  (indent)
   (display "]"))
 
 
