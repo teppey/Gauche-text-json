@@ -326,8 +326,14 @@
 (use gauche.sequence)
 (use srfi-1 :only (remove))
 
+;; For Reader
 (define json-object (make-parameter (cut make <alist>)))
 (define json-array  (make-parameter <vector>))
+
+;; For Writer
+(define json-object? (make-parameter (or (cut is-a? <> <dictionary>)
+                                         list?)))
+
 
 ;; ---------------------------------------------------------
 ;; associate list wrapper class
