@@ -134,6 +134,47 @@
                  ("Zip"       . "94085")
                  ("Country"   . "US"))))
 
+;; pretty-print
+(test-section "pretty-print")
+(test* "pp" "[\n]" (json-write* #() #f))
+
+(test* "pp" "[
+  {
+  }
+]" (json-write* #(()) #f))
+
+(test* "pp" "[
+  1
+]" (json-write* #(1) #f))
+
+(test* "pp" "[
+  1,
+  2
+]" (json-write* #(1 2) #f))
+
+(test* "pp" "[
+  1,
+  {
+    \"foo\": \"x\"
+  },
+  2
+]" (json-write* #(1 (("foo" . "x")) 2) #f))
+
+(test* "pp" "{
+  \"x\": [
+    1,
+    {
+      \"foo\": [
+        2,
+        3
+      ],
+      \"bar\": 4
+    },
+    5
+  ]
+}" (json-write* '(["x" . #(1 (["foo" . #(2 3)] ["bar" . 4]) 5)]) #f))
+
+
 ;; epilogue
 (test-end)
 
