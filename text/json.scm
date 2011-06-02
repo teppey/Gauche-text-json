@@ -262,8 +262,8 @@
 (define %json-indent-level  (make-parameter 0))
 (define %json-indent-width
   (make-parameter 2
-    (^n (or (and (positive? n) n)
-            (error "json-indent-width must be positive integer" n)))))
+    (^n (or (and (integer? n) (>= n 0) (x->integer n))
+            (error "json-indent-width must be positive integer or zero, but got" n)))))
 
 (define-syntax display-if-pretty
   (syntax-rules ()
