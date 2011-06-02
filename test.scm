@@ -41,17 +41,18 @@
           \"IDs\": [116, 943, 234, 38793]
         }
    }")
-;; Reader
 (parameterize ([json-object (cut make-hash-table 'string=?)]
                [json-array  <list>])
   (let1 o (json-read json-text-sample)
     (test* "hashtable?" #t (is-a? o <hash-table>))
     (test* "hashtable?" #t (is-a? (~ o "Image") <hash-table>))
     (test* "list?" #t (is-a? (~ o "Image" "IDs") <list>))
-    (test* "lookup" "100" (~ o "Image" "Tumbnail" "Width"))
-    ))
-;; Writer
+    (test* "lookup" "100" (~ o "Image" "Thumbnail" "Width"))
 
+    (parameterize ([json-object? (cut is-a? <> <dictionary>)])
+      (test* "list -> array" "[1,2,3]" (json-write '(1 2 3) #f))
+      )
+    ))
 
 ;;; The following code from Gauche-trunk/ext/peg/test.scm
 
