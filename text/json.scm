@@ -6,6 +6,7 @@
 ;;; http://www.ietf.org/rfc/rfc4627
 
 (define-module text.json
+  (use gauche.parameter)
   (use srfi-13)
   (use srfi-43)
   (use text.parse)
@@ -17,7 +18,10 @@
           <alist>
           json-mime-type
           json-read
-          json-write))
+          json-write
+          json-write*
+          json-indent-width
+          ))
 (select-module text.json)
 
 
@@ -258,6 +262,34 @@
 ;; ---------------------------------------------------------
 ;; Writer
 ;;
+
+;; Parameters for pretty-print
+(define %json-pretty-print? (make-parameter #f))
+(define %json-indent-level  (make-parameter 0))
+(define %json-indent-width
+  (make-parameter 2
+    (^n (or (and (integer? n) (>= n 0) (x->integer n))
+            (error "json-indent-width must be positive integer or zero, but got" n)))))
+
+(define-syntax display-if-pretty
+  (syntax-rules ()
+    [(_ x) (when (%json-pretty-print?) (display x))]))
+
+(define-syntax indent-if-pretty
+  (syntax-rules ()
+    [(_) (display-if-pretty
+           (make-string (* (%json-indent-level) (%json-indent-width)) #\space))]))
+
+(define-syntax newline-if-pretty
+  (syntax-rules ()
+    [(_) (display-if-pretty #\newline)]))
+
+(define-syntax with-indent
+  (syntax-rules ()
+    [(_ body ...)
+     (parameterize ([%json-indent-level (+ 1 (%json-indent-level))])
+       body ...)]))
+
 (define (format-json obj)
   (cond ((list? obj)   (format-object obj))
         ((vector? obj) (format-array obj))
@@ -297,28 +329,37 @@
     obj)
   (display "\""))
 
-;; from rfc.json
 (define (format-object obj)
-  (display "{")
-  (fold (lambda (pair comma)
-          (display comma)
-          (format-string (car pair))
-          (display ":")
-          (format-json (cdr pair))
-          ",")
-        "" obj)
-  (display "}"))
+  (display #\{) (newline-if-pretty)
+  (with-indent
+    (let loop ([obj obj])
+      (unless (null? obj)
+        (indent-if-pretty)
+        (format-string (caar obj))
+        (display #\:)
+        (display-if-pretty #\space)
+        (format-json (cdar obj))
+        (unless (null? (cdr obj))
+          (display #\,))
+        (newline-if-pretty)
+        (loop (cdr obj)))))
+  (indent-if-pretty)
+  (display #\}))
 
 (define (format-array obj)
-  (display "[")
-  (let1 last (- (vector-length obj) 1)
-    (vector-for-each
-      (lambda (index elt)
-        (format-json elt)
-        (when (< index last)
-          (display ",")))
-      obj))
-  (display "]"))
+  (display #\[) (newline-if-pretty)
+  (with-indent
+    (let1 last (- (vector-length obj) 1)
+      (vector-for-each
+        (lambda (index elt)
+          (indent-if-pretty)
+          (format-json elt)
+          (when (< index last)
+            (display #\,))
+          (newline-if-pretty))
+        obj)))
+  (indent-if-pretty)
+  (display #\]))
 
 ;; -------------------------
 ;; JSON Container Parameters
@@ -402,6 +443,12 @@
            (with-output-to-port output (pa$ format-json obj)))
           (else
             (error "output port required, but got" output)))))
+
+(define json-indent-width %json-indent-width)
+
+(define (json-write* obj . output)
+  (parameterize ([%json-pretty-print? #t])
+    (apply json-write obj output)))
 
 
 (provide "text/json")
