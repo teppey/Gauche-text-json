@@ -7,6 +7,9 @@
 
 (define-module text.json
   (use gauche.parameter)
+  (use gauche.dictionary)
+  (use gauche.sequence)
+  (use srfi-1 :only (remove))
   (use srfi-13)
   (use srfi-43)
   (use text.parse)
@@ -23,6 +26,69 @@
           json-indent-width
           ))
 (select-module text.json)
+
+;; ---------------------------------------------------------
+;; Aassociate list wrapper class
+;;
+(define-class <alist> (<dictionary>)
+  ([alist :init-value '()]))
+
+(define-method unwrap ((object <alist>))
+  (reverse (~ object 'alist)))
+
+;; <dictionary> interface
+(define-method dict-get ((object <alist>) key . default)
+  (if-let1 p (assoc key (~ object 'alist))
+    (cdr p)
+    (if (null? default) #f (car default))))
+
+(define-method dict-put! ((object <alist>) key value)
+  (dict-delete! object key)
+  (set! (~ object 'alist) (acons key value (~ object 'alist))))
+
+(define-method dict-exists? ((object <alist>) key)
+  (boolean (assoc key (~ object 'alist))))
+
+(define-method dict-delete! ((object <alist>) key)
+  (set! (~ object 'alist) (remove (^p (equal? (car p) key)) (~ object 'alist))))
+
+(define-method dict-fold ((object <alist>) proc seed)
+  (fold (^(pair seed)
+          (proc (car pair) (cdr pair) seed))
+        seed (~ object 'alist)))
+
+;; For Parser
+;;
+(define %class? (cut is-a? <> <class>))
+
+;; json-object : <dictionary> subclass | thunk
+;;   memo: need check that parameter is <dictionary> subclass?
+(define json-object
+  (make-parameter <alist>
+    (^p (cond [(procedure? p) p]
+              [(%class? p) (cut make p)]
+              [else
+                (error "json-object must be class or procedure, but got" p)]))))
+
+;; json-array  : <sequence> subclass | thunk
+;;   thunk returns two values, class and size for call-with-builder.
+;;   memo: need check that parameter is <sequence> subclass?
+(define json-array
+  (make-parameter <vector>
+    (^p (cond [(procedure? p) p]
+              [(%class? p) (cut values p #f)]
+              [else
+                (error "json-array must be class or procedure, but got" p)]))))
+
+;; For Writer
+;;
+;;  json-object? : class | list of class | predicate
+;;
+;;  json-array?  : class | list of class | predicate
+;;
+(define json-object? (make-parameter `(,<dictionary> ,<list>)))
+(define json-array?  (make-parameter <sequence>))
+
 
 
 ;; ---------------------------------------------------------
@@ -137,21 +203,23 @@
   (let* ((scanner (make-scanner input))
          (token (scanner)))
     (case (token-type token)
-      ((begin-object) (parse-object ((json-object)) scanner values))
+      ((begin-object)
+       (parse-object ((json-object)) scanner values))
       ((begin-array)
-       (call-with-builder (json-array)
-         (lambda (add! get)
-           (parse-array add! get scanner values))))
+       (receive (class size) ((json-array))
+         (call-with-builder class
+           (cut parse-array <> <> scanner values) :size size)))
       (else           (error "JSON must be object or array")))))
 
 (define (parse-any scanner cont)
   (let1 token (scanner)
     (case (token-type token)
-      ((begin-object) (parse-object ((json-object)) scanner cont))
+      ((begin-object)
+       (parse-object ((json-object)) scanner cont))
       ((begin-array)
-       (call-with-builder (json-array)
-         (lambda (add! get)
-           (parse-array add! get scanner values))))
+       (receive (class size) ((json-array))
+         (call-with-builder class
+           (cut parse-array <> <> scanner values) :size size)))
       ((string)       (cont (parse-string (token-value token))))
       ((number)       (cont (parse-number (token-value token))))
       ((symbol)       (cont (parse-symbol (token-value token))))
@@ -360,65 +428,6 @@
         obj)))
   (indent-if-pretty)
   (display #\]))
-
-;; -------------------------
-;; JSON Container Parameters
-;;
-(use gauche.parameter)
-(use gauche.dictionary)
-(use gauche.sequence)
-(use srfi-1 :only (remove))
-
-;; For Reader
-;;
-;;   json-object : <dictionary> subclass | thunk
-;;
-;;   json-array  : <sequence> subclass | thunk
-;;
-(define json-object (make-parameter <alist>))
-(define json-array  (make-parameter <vector>))
-
-;; For Writer
-;;
-;;  json-object? : class | list of class | predicate
-;;
-;;  json-array?  : class | list of class | predicate
-;;
-(define json-object? (make-parameter `(,<dictionary> ,<list>)))
-(define json-array?  (make-parameter <sequence>))
-
-
-;; ---------------------------------------------------------
-;; associate list wrapper class
-;;
-(define-class <alist> (<dictionary>)
-  ([alist :init-value '()]))
-
-(define-method unwrap ((object <alist>))
-  (reverse (~ object 'alist)))
-
-;; <dictionary> interface
-(define-method dict-get ((object <alist>) key . default)
-  (if-let1 p (assoc key (~ object 'alist))
-    (cdr p)
-    (if (null? default) #f (car default))))
-
-(define-method dict-put! ((object <alist>) key value)
-  (dict-delete! object key)
-  (set! (~ object 'alist) (acons key value (~ object 'alist))))
-
-(define-method dict-exists? ((object <alist>) key)
-  (boolean (assoc key (~ object 'alist))))
-
-(define-method dict-delete! ((object <alist>) key)
-  (set! (~ object 'alist) (remove (^p (equal? (car p) key)) (~ object 'alist))))
-
-(define-method dict-fold ((object <alist>) proc seed)
-  (fold (^(pair seed)
-          (proc (car pair) (cdr pair) seed))
-        seed (~ object 'alist)))
-
-
 
 
 ;; ---------------------------------------------------------

@@ -180,7 +180,7 @@
                  ("Zip"       . "94085")
                  ("Country"   . "US"))))
 
-;; pretty-print
+; pretty-print
 (test-section "pretty-print")
 (test* "pp" "[\n]" (json-write* #() #f))
 (test* "pp" "[
