@@ -9,7 +9,7 @@
   (use gauche.parameter)
   (use gauche.dictionary)
   (use gauche.sequence)
-  (use srfi-1 :only (remove))
+  (use srfi-1)
   (use srfi-13)
   (use srfi-43)
   (use text.parse)
@@ -62,32 +62,49 @@
 (define %class? (cut is-a? <> <class>))
 
 ;; json-object : <dictionary> subclass | thunk
+;;   thunk returns instance of <dictionary> subclass.
 ;;   memo: need check that parameter is <dictionary> subclass?
 (define json-object
   (make-parameter <alist>
-    (^p (cond [(procedure? p) p]
-              [(%class? p) (cut make p)]
-              [else
-                (error "json-object must be class or procedure, but got" p)]))))
+    (match-lambda
+      [(? procedure? thunk) thunk]
+      [(? %class? cls) (cut make cls)]
+      [badarg (error "json-object must be class or procedure, but got" badarg)])))
 
 ;; json-array  : <sequence> subclass | thunk
 ;;   thunk returns two values, class and size for call-with-builder.
 ;;   memo: need check that parameter is <sequence> subclass?
 (define json-array
   (make-parameter <vector>
-    (^p (cond [(procedure? p) p]
-              [(%class? p) (cut values p #f)]
-              [else
-                (error "json-array must be class or procedure, but got" p)]))))
+    (match-lambda
+      [(? procedure? thunk) thunk]
+      [(? %class? cls) (cut values cls #f)]
+      [badarg (error "json-array must be class or procedure, but got" badarg)])))
 
 ;; For Writer
 ;;
 ;;  json-object? : class | list of class | predicate
 ;;
+(define json-object?
+  (make-parameter `(,<dictionary> ,<list>)
+    (match-lambda
+      [(? procedure? pred) pred]
+      [(? %class? cls) (cut is-a? <> cls)]
+      [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
+      [badarg
+        (error "json-object? expected class/(class ...)/procedure, but got" badarg)])))
+
+;;
 ;;  json-array?  : class | list of class | predicate
 ;;
-(define json-object? (make-parameter `(,<dictionary> ,<list>)))
-(define json-array?  (make-parameter <sequence>))
+(define json-array?
+  (make-parameter <sequence>
+    (match-lambda
+      [(? procedure? pred) pred]
+      [(? %class? cls) (cut is-a? <> cls)]
+      [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
+      [badarg
+        (error "json-array? expected class/(class ...)/procedure, but got" badarg)])))
 
 
 
