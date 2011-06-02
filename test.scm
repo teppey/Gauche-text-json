@@ -3,6 +3,7 @@
 ;;;
 
 (use gauche.test)
+(use gauche.parameter)
 
 (test-start "text.json")
 (use text.json)
@@ -137,6 +138,26 @@
 ;; pretty-print
 (test-section "pretty-print")
 (test* "pp" "[\n]" (json-write* #() #f))
+(test* "pp" "[
+  [
+  ]
+]" (json-write* #(#()) #f))
+(test* "pp" "[
+  [
+    [
+      [
+      ],
+      1,
+      {
+      }
+    ]
+  ]
+]" (json-write* #(#(#(#() 1 ()))) #f))
+(test* "pp" "{\n}" (json-write* '() #f))
+(test* "pp" "{
+  \"foo\": {
+  }
+}" (json-write* '(["foo" . ()]) #f))
 
 (test* "pp" "[
   {
@@ -173,6 +194,23 @@
     5
   ]
 }" (json-write* '(["x" . #(1 (["foo" . #(2 3)] ["bar" . 4]) 5)]) #f))
+
+(test* "pp" "[
+1
+]" (parameterize ([json-indent-width 0]) (json-write* #(1) #f)))
+
+(test* "pp" "[
+ 1
+]" (parameterize ([json-indent-width 1]) (json-write* #(1) #f)))
+
+(test* "pp" "{
+ \"foo\": 1,
+ \"bar\": [
+  2,
+  3
+ ]
+}" (parameterize ([json-indent-width 1])
+     (json-write* '(["foo" . 1] ["bar" . #(2 3)]) #f)))
 
 
 ;; epilogue
