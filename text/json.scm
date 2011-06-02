@@ -10,9 +10,10 @@
   (use srfi-43)
   (use text.parse)
   (use util.match)
-  (export json-mime-type
-          json-read
-          json-write))
+  (export-all))
+;  (export json-mime-type
+;          json-read
+;          json-write))
 (select-module text.json)
 
 
