@@ -11,7 +11,9 @@
   (use text.parse)
   (use util.match)
   (export json-object
+          json-object?
           json-array
+          json-array?
           <alist>
           json-mime-type
           json-read
@@ -327,12 +329,22 @@
 (use srfi-1 :only (remove))
 
 ;; For Reader
-(define json-object (make-parameter (cut make <alist>)))
+;;
+;;   json-object : <dictionary> subclass | thunk
+;;
+;;   json-array  : <sequence> subclass | thunk
+;;
+(define json-object (make-parameter <alist>))
 (define json-array  (make-parameter <vector>))
 
 ;; For Writer
-(define json-object? (make-parameter (or (cut is-a? <> <dictionary>)
-                                         list?)))
+;;
+;;  json-object? : class | list of class | predicate
+;;
+;;  json-array?  : class | list of class | predicate
+;;
+(define json-object? (make-parameter `(,<dictionary> ,<list>)))
+(define json-array?  (make-parameter <sequence>))
 
 
 ;; ---------------------------------------------------------
