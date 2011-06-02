@@ -376,8 +376,8 @@
        body ...)]))
 
 (define (format-json obj)
-  (cond ((list? obj)   (format-object obj))
-        ((vector? obj) (format-array obj))
+  (cond [((json-object?) obj) (format-object obj)]
+        [((json-array?) obj) (format-array obj)]
         ((number? obj) (format-number obj))
         ((string? obj) (format-string obj))
         ((boolean? obj) (display (if obj 'true 'false)))
