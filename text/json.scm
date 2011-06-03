@@ -399,13 +399,13 @@
 
 (define *escape-table*
   (hash-table 'eqv?
-              '(#\x08     . "\\b")
-              '(#\"       . "\\\"")
-              '(#\\       . "\\\\")
-              '(#\page    . "\\f")
-              '(#\newline . "\\n")
-              '(#\return  . "\\r")
-              '(#\tab     . "\\t")))
+    '(#\x08     . "\\b")
+    '(#\"       . "\\\"")
+    '(#\\       . "\\\\")
+    '(#\page    . "\\f")
+    '(#\newline . "\\n")
+    '(#\return  . "\\r")
+    '(#\tab     . "\\t")))
 
 (define (format-string obj)
   (display "\"")
