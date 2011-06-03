@@ -14,10 +14,10 @@
   (use srfi-43)
   (use text.parse)
   (use util.match)
-  (export json-object
-          json-object?
-          json-array
-          json-array?
+  (export json-object-to
+          json-object-from?
+          json-array-to
+          json-array-from?
           <alist>
           json-mime-type
           json-read
@@ -71,50 +71,50 @@
 ;;
 (define %class? (cut is-a? <> <class>))
 
-;; json-object : <dictionary> subclass | thunk
+;; json-object-to : <dictionary> subclass | thunk
 ;;   thunk returns instance of <dictionary> subclass.
 ;;   memo: need check that parameter is <dictionary> subclass?
-(define json-object
+(define json-object-to
   (make-parameter <alist>
     (match-lambda
       [(? procedure? thunk) thunk]
       [(? %class? cls) (cut make cls)]
-      [badarg (error "json-object must be class or procedure, but got" badarg)])))
+      [badarg (error "json-object-to must be class or procedure, but got" badarg)])))
 
-;; json-array  : <sequence> subclass | thunk
+;; json-array-to  : <sequence> subclass | thunk
 ;;   thunk returns two values, class and size for call-with-builder.
 ;;   memo: need check that parameter is <sequence> subclass?
-(define json-array
+(define json-array-to
   (make-parameter <vector>
     (match-lambda
       [(? procedure? thunk) thunk]
       [(? %class? cls) (cut values cls #f)]
-      [badarg (error "json-array must be class or procedure, but got" badarg)])))
+      [badarg (error "json-array-to must be class or procedure, but got" badarg)])))
 
 ;; For Writer
 ;;
-;;  json-object? : class | list of class | predicate
+;;  json-object-from? : class | list of class | predicate
 ;;
-(define json-object?
+(define json-object-from?
   (make-parameter `(,<dictionary> ,<list>)
     (match-lambda
       [(? procedure? pred) pred]
       [(? %class? cls) (cut is-a? <> cls)]
       [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
       [badarg
-        (error "json-object? expected class/(class ...)/procedure, but got" badarg)])))
+        (error "json-object-from? expected class/(class ...)/procedure, but got" badarg)])))
 
 ;;
-;;  json-array?  : class | list of class | predicate
+;;  json-array-from?  : class | list of class | predicate
 ;;
-(define json-array?
+(define json-array-from?
   (make-parameter <sequence>
     (match-lambda
       [(? procedure? pred) pred]
       [(? %class? cls) (cut is-a? <> cls)]
       [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
       [badarg
-        (error "json-array? expected class/(class ...)/procedure, but got" badarg)])))
+        (error "json-array-from? expected class/(class ...)/procedure, but got" badarg)])))
 
 
 
@@ -231,9 +231,9 @@
          (token (scanner)))
     (case (token-type token)
       ((begin-object)
-       (parse-object ((json-object)) scanner values))
+       (parse-object ((json-object-to)) scanner values))
       ((begin-array)
-       (receive (class size) ((json-array))
+       (receive (class size) ((json-array-to))
          (call-with-builder class
            (cut parse-array <> <> scanner values) :size size)))
       (else           (error "JSON must be object or array")))))
@@ -242,9 +242,9 @@
   (let1 token (scanner)
     (case (token-type token)
       ((begin-object)
-       (parse-object ((json-object)) scanner cont))
+       (parse-object ((json-object-to)) scanner cont))
       ((begin-array)
-       (receive (class size) ((json-array))
+       (receive (class size) ((json-array-to))
          (call-with-builder class
            (cut parse-array <> <> scanner values) :size size)))
       ((string)       (cont (parse-string (token-value token))))
@@ -390,11 +390,11 @@
          (format-string obj)]
         [(boolean? obj)
          (format-literal obj)]
-        [((json-object?) obj)
+        [((json-object-from?) obj)
          (if (list? obj)
            (format-object (wrap-alist obj))
            (format-object obj))]
-        [((json-array?) obj)
+        [((json-array-from?) obj)
          (format-array obj)]
         [else (error "unrecognize object" obj)]))
 
