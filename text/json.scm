@@ -14,10 +14,10 @@
   (use srfi-43)
   (use text.parse)
   (use util.match)
-  (export json-object-to
-          json-object-from?
-          json-array-to
-          json-array-from?
+  (export json-object
+          json-object?
+          json-array
+          json-array?
           <alist>
           json-mime-type
           json-read
@@ -73,31 +73,31 @@
 ;;
 (define %class? (cut is-a? <> <class>))
 
-;; json-object-to : <dictionary> subclass | thunk
+;; json-object : <dictionary> subclass | thunk
 ;;   thunk returns instance of <dictionary> subclass.
 ;;   memo: need check that parameter is <dictionary> subclass?
-(define json-object-to
+(define json-object
   (make-parameter <alist>
     (match-lambda
       [(? procedure? thunk) thunk]
       [(? %class? cls) (cut make cls)]
-      [badarg (error "json-object-to must be class or procedure, but got" badarg)])))
+      [badarg (error "json-object must be class or procedure, but got" badarg)])))
 
-;; json-array-to  : <sequence> subclass | thunk
+;; json-array  : <sequence> subclass | thunk
 ;;   thunk returns two values, class and size for call-with-builder.
 ;;   memo: need check that parameter is <sequence> subclass?
-(define json-array-to
+(define json-array
   (make-parameter <vector>
     (match-lambda
       [(? procedure? thunk) thunk]
       [(? %class? cls) (cut values cls #f)]
-      [badarg (error "json-array-to must be class or procedure, but got" badarg)])))
+      [badarg (error "json-array must be class or procedure, but got" badarg)])))
 
 ;; For Writer
 ;;
-;;  json-object-from? : #f | class | list of class | predicate
+;;  json-object? : #f | class | list of class | predicate
 ;;
-(define json-object-from?
+(define json-object?
   (make-parameter #f
     (match-lambda
       [#f #f]
@@ -105,12 +105,12 @@
       [(? %class? cls) (cut is-a? <> cls)]
       [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
       [badarg
-        (error "json-object-from? expected class/(class ...)/procedure, but got" badarg)])))
+        (error "json-object? expected class/(class ...)/procedure, but got" badarg)])))
 
 ;;
-;;  json-array-from? : #f | class | list of class | predicate
+;;  json-array? : #f | class | list of class | predicate
 ;;
-(define json-array-from?
+(define json-array?
   (make-parameter #f
     (match-lambda
       [#f #f]
@@ -118,7 +118,7 @@
       [(? %class? cls) (cut is-a? <> cls)]
       [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
       [badarg
-        (error "json-array-from? expected class/(class ...)/procedure, but got" badarg)])))
+        (error "json-array? expected class/(class ...)/procedure, but got" badarg)])))
 
 
 
@@ -235,9 +235,9 @@
          (token (scanner)))
     (case (token-type token)
       ((begin-object)
-       (parse-object ((json-object-to)) scanner values))
+       (parse-object ((json-object)) scanner values))
       ((begin-array)
-       (receive (class size) ((json-array-to))
+       (receive (class size) ((json-array))
          (call-with-builder class
            (cut parse-array <> <> scanner values) :size size)))
       (else           (error "JSON must be object or array")))))
@@ -246,9 +246,9 @@
   (let1 token (scanner)
     (case (token-type token)
       ((begin-object)
-       (parse-object ((json-object-to)) scanner cont))
+       (parse-object ((json-object)) scanner cont))
       ((begin-array)
-       (receive (class size) ((json-array-to))
+       (receive (class size) ((json-array))
          (call-with-builder class
            (cut parse-array <> <> scanner values) :size size)))
       ((string)       (cont (parse-string (token-value token))))
@@ -394,9 +394,9 @@
     [(string? obj) (format-string obj)]
     [(boolean? obj) (format-literal obj)]
     ;; test container with parameter if set
-    [(json-object-from?) (^p (and (procedure? p) (p obj)))
+    [(json-object?) (^p (and (procedure? p) (p obj)))
       => (^_ (format-object (wrap-alist obj)))]
-    [(json-array-from?)  (^p (and (procedure? p) (p obj)))
+    [(json-array?)  (^p (and (procedure? p) (p obj)))
       => (^_ (format-array obj))]
     ;; determine container
     [(any (pa$ is-a? obj) `(,<dictionary> ,<list>))
