@@ -49,8 +49,8 @@
     (test* "list?" #t (is-a? (~ o "Image" "IDs") <list>))
     (test* "lookup" "100" (~ o "Image" "Thumbnail" "Width"))))
 
-(parameterize ([json-object <hash-table>]
-               [json-array  <list>])
+(parameterize ([json-object? <hash-table>]
+               [json-array?  <list>])
   (test* "hash-table -> object" "{\"foo\":1,\"bar\":2}"
          (json-write (hash-table 'string=? '("foo" . 1) '("bar" . 2)) #f))
   (test* "list -> array" "[1,2,3]" (json-write '(1 2 3) #f))

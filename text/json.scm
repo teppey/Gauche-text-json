@@ -367,14 +367,11 @@
   (syntax-rules ()
     [(_ x) (when (%json-pretty-print?) (display x))]))
 
-(define-syntax indent-if-pretty
+(define-syntax newline-and-indent
   (syntax-rules ()
-    [(_) (display-if-pretty
-           (make-string (* (%json-indent-level) (%json-indent-width)) #\space))]))
-
-(define-syntax newline-if-pretty
-  (syntax-rules ()
-    [(_) (display-if-pretty #\newline)]))
+    [(_) (begin (display-if-pretty #\newline)
+                (display-if-pretty
+                  (make-string (* (%json-indent-level) (%json-indent-width)) #\space)))]))
 
 (define-syntax with-indent
   (syntax-rules ()
@@ -434,31 +431,26 @@
     (dict-fold obj
       (^(key value comma)
         (display comma)
-        (newline-if-pretty)
-        (indent-if-pretty)
+        (newline-and-indent)
         (format-string key)
         (display #\:)
         (display-if-pretty #\space)
         (format-json value)
         #\,)
       ""))
-  (newline-if-pretty)
-  (indent-if-pretty)
+  (newline-and-indent)
   (display #\}))
 
-(define (format-array obj)
-  (display #\[) (newline-if-pretty)
+(define-method format-array ([obj <sequence>])
+  (display #\[)
   (with-indent
-    (let1 last (- (vector-length obj) 1)
-      (vector-for-each
-        (lambda (index elt)
-          (indent-if-pretty)
-          (format-json elt)
-          (when (< index last)
-            (display #\,))
-          (newline-if-pretty))
-        obj)))
-  (indent-if-pretty)
+    (fold (^(value comma)
+            (display comma)
+            (newline-and-indent)
+            (format-json value)
+            #\,)
+          "" obj))
+  (newline-and-indent)
   (display #\]))
 
 
