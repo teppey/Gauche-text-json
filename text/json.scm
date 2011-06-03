@@ -382,7 +382,7 @@
         [(string? obj)
          (format-string obj)]
         [(boolean? obj)
-         (format-boolean obj)]
+         (or (and obj 'true) 'false)]
         [((json-object?) obj)
          (format-object obj)]
         [((json-array?) obj)
