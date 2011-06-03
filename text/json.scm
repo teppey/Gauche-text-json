@@ -375,14 +375,19 @@
      (parameterize ([%json-indent-level (+ 1 (%json-indent-level))])
        body ...)]))
 
+;; TOOD: handle symbol 'true', 'false' to boolean?
 (define (format-json obj)
-  (cond [((json-object?) obj) (format-object obj)]
-        [((json-array?) obj) (format-array obj)]
-        ((number? obj) (format-number obj))
-        ((string? obj) (format-string obj))
-        ((boolean? obj) (display (if obj 'true 'false)))
-        ((eq? obj 'null) (display 'null))
-        (else (error "unrecognize object" obj))))
+  (cond [(number? obj)
+         (format-number obj)]
+        [(string? obj)
+         (format-string obj)]
+        [(boolean? obj)
+         (format-boolean obj)]
+        [((json-object?) obj)
+         (format-object obj)]
+        [((json-array?) obj)
+         (format-array obj)]
+        [else (error "unrecognize object" obj)]))
 
 ;; from rfc.json
 (define (format-number obj)
