@@ -36,6 +36,9 @@
 (define-method unwrap ((object <alist>))
   (reverse (~ object 'pairs)))
 
+(define (wrap-alist alist)
+  (make <alist> :pairs alist))
+
 ;; <collection> interface
 (define-method call-with-iterator ([object <alist>] proc . _)
   (let* ([pairs (~ object 'pairs)]
@@ -389,7 +392,7 @@
          (format-literal obj)]
         [((json-object?) obj)
          (if (list? obj)
-           (format-object (make <alist> :pairs obj))
+           (format-object (wrap-alist obj))
            (format-object obj))]
         [((json-array?) obj)
          (format-array obj)]
