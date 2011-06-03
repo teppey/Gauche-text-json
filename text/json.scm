@@ -30,32 +30,39 @@
 ;; ---------------------------------------------------------
 ;; Aassociate list wrapper class
 ;;
-(define-class <alist> (<dictionary>)
-  ([alist :init-value '()]))
+(define-class <alist> (<dictionary> <collection>)
+  ([pairs :init-value '() :init-keyword :pairs]))
 
 (define-method unwrap ((object <alist>))
-  (reverse (~ object 'alist)))
+  (reverse (~ object 'pairs)))
+
+;; <collection> interface
+(define-method call-with-iterator ([object <alist>] proc . _)
+  (let* ([pairs (~ object 'pairs)]
+         [end? (lambda () (null? pairs))]
+         [next (lambda () (begin0 (car pairs) (pop! pairs)))])
+    (proc end? next)))
 
 ;; <dictionary> interface
 (define-method dict-get ((object <alist>) key . default)
-  (if-let1 p (assoc key (~ object 'alist))
+  (if-let1 p (assoc key (~ object 'pairs))
     (cdr p)
     (if (null? default) #f (car default))))
 
 (define-method dict-put! ((object <alist>) key value)
   (dict-delete! object key)
-  (set! (~ object 'alist) (acons key value (~ object 'alist))))
+  (set! (~ object 'pairs) (acons key value (~ object 'pairs))))
 
 (define-method dict-exists? ((object <alist>) key)
-  (boolean (assoc key (~ object 'alist))))
+  (boolean (assoc key (~ object 'pairs))))
 
 (define-method dict-delete! ((object <alist>) key)
-  (set! (~ object 'alist) (remove (^p (equal? (car p) key)) (~ object 'alist))))
+  (set! (~ object 'pairs) (remove (^p (equal? (car p) key)) (~ object 'pairs))))
 
 (define-method dict-fold ((object <alist>) proc seed)
   (fold (^(pair seed)
           (proc (car pair) (cdr pair) seed))
-        seed (~ object 'alist)))
+        seed (~ object 'pairs)))
 
 ;; For Parser
 ;;
@@ -384,7 +391,9 @@
         [(boolean? obj)
          (format-literal obj)]
         [((json-object?) obj)
-         (format-object obj)]
+         (if (list? obj)
+           (format-object (make <alist> :pairs obj))
+           (format-object obj))]
         [((json-array?) obj)
          (format-array obj)]
         [else (error "unrecognize object" obj)]))
@@ -419,20 +428,21 @@
 (define (format-literal obj)
   (display (if obj "true" "false")))
 
-(define (format-object obj)
-  (display #\{) (newline-if-pretty)
+(define-method format-object ([obj <dictionary>])
+  (display #\{)
   (with-indent
-    (let loop ([obj obj])
-      (unless (null? obj)
+    (dict-fold obj
+      (^(key value comma)
+        (display comma)
+        (newline-if-pretty)
         (indent-if-pretty)
-        (format-string (caar obj))
+        (format-string key)
         (display #\:)
         (display-if-pretty #\space)
-        (format-json (cdar obj))
-        (unless (null? (cdr obj))
-          (display #\,))
-        (newline-if-pretty)
-        (loop (cdr obj)))))
+        (format-json value)
+        #\,)
+      ""))
+  (newline-if-pretty)
   (indent-if-pretty)
   (display #\}))
 
