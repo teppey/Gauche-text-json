@@ -382,7 +382,7 @@
         [(string? obj)
          (format-string obj)]
         [(boolean? obj)
-         (or (and obj 'true) 'false)]
+         (format-literal obj)]
         [((json-object?) obj)
          (format-object obj)]
         [((json-array?) obj)
@@ -415,6 +415,9 @@
           (format #t "\\u~4,'0X" (char->ucs c))))
     obj)
   (display "\""))
+
+(define (format-literal obj)
+  (display (if obj "true" "false")))
 
 (define (format-object obj)
   (display #\{) (newline-if-pretty)
