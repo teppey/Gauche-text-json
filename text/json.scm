@@ -390,9 +390,10 @@
 (define (format-json obj)
   (cond
     ;; simple value
-    [(number? obj) (format-number obj)]
-    [(string? obj) (format-string obj)]
+    [(number? obj)  (format-number obj)]
+    [(string? obj)  (format-string obj)]
     [(boolean? obj) (format-literal obj)]
+    [(symbol? obj)  (format-literal obj)]
     ;; test container with parameter if set
     [(json-object?) (^p (and (procedure? p) (p obj)))
       => (^_ (format-object (wrap-alist obj)))]
@@ -433,8 +434,11 @@
     obj)
   (display "\""))
 
-(define (format-literal obj)
-  (display (if obj "true" "false")))
+(define format-literal
+  (.$ display (match-lambda
+                ['null "null"]
+                [#t    "true"]
+                [#f    "false"])))
 
 (define-method format-object ([obj <dictionary>])
   (display #\{)
