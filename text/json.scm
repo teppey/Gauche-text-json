@@ -36,8 +36,10 @@
 (define-method unwrap ((object <alist>))
   (reverse (~ object 'pairs)))
 
-(define (wrap-alist alist)
-  (make <alist> :pairs alist))
+(define (wrap-alist obj)
+  (if (list? obj)
+    (make <alist> :pairs obj)
+    obj))
 
 ;; <collection> interface
 (define-method call-with-iterator ([object <alist>] proc . _)
@@ -93,11 +95,12 @@
 
 ;; For Writer
 ;;
-;;  json-object-from? : class | list of class | predicate
+;;  json-object-from? : #f | class | list of class | predicate
 ;;
 (define json-object-from?
-  (make-parameter `(,<dictionary> ,<list>)
+  (make-parameter #f
     (match-lambda
+      [#f #f]
       [(? procedure? pred) pred]
       [(? %class? cls) (cut is-a? <> cls)]
       [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
@@ -105,11 +108,12 @@
         (error "json-object-from? expected class/(class ...)/procedure, but got" badarg)])))
 
 ;;
-;;  json-array-from?  : class | list of class | predicate
+;;  json-array-from? : #f | class | list of class | predicate
 ;;
 (define json-array-from?
-  (make-parameter <sequence>
+  (make-parameter #f
     (match-lambda
+      [#f #f]
       [(? procedure? pred) pred]
       [(? %class? cls) (cut is-a? <> cls)]
       [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
@@ -384,19 +388,23 @@
 
 ;; TOOD: handle symbol 'true', 'false' to boolean?
 (define (format-json obj)
-  (cond [(number? obj)
-         (format-number obj)]
-        [(string? obj)
-         (format-string obj)]
-        [(boolean? obj)
-         (format-literal obj)]
-        [((json-object-from?) obj)
-         (if (list? obj)
-           (format-object (wrap-alist obj))
-           (format-object obj))]
-        [((json-array-from?) obj)
-         (format-array obj)]
-        [else (error "unrecognize object" obj)]))
+  (cond
+    ;; simple value
+    [(number? obj) (format-number obj)]
+    [(string? obj) (format-string obj)]
+    [(boolean? obj) (format-literal obj)]
+    ;; test container with parameter if set
+    [(json-object-from?) (^p (and (procedure? p) (p obj)))
+      => (^_ (format-object (wrap-alist obj)))]
+    [(json-array-from?)  (^p (and (procedure? p) (p obj)))
+      => (^_ (format-array obj))]
+    ;; determine container
+    [(any (pa$ is-a? obj) `(,<dictionary> ,<list>))
+     (format-object (wrap-alist obj))]
+    [(is-a? obj <sequence>)
+     (format-array obj)]
+    ;; unexpected object
+    [else (error "unexpected object" obj)]))
 
 ;; from rfc.json
 (define (format-number obj)
