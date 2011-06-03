@@ -47,12 +47,14 @@
     (test* "hashtable?" #t (is-a? o <hash-table>))
     (test* "hashtable?" #t (is-a? (~ o "Image") <hash-table>))
     (test* "list?" #t (is-a? (~ o "Image" "IDs") <list>))
-    (test* "lookup" "100" (~ o "Image" "Thumbnail" "Width"))
+    (test* "lookup" "100" (~ o "Image" "Thumbnail" "Width"))))
 
-    (parameterize ([json-object? (cut is-a? <> <dictionary>)])
-      (test* "list -> array" "[1,2,3]" (json-write '(1 2 3) #f))
-      )
-    ))
+(parameterize ([json-object <hash-table>]
+               [json-array  <list>])
+  (test* "hash-table -> object" "{\"foo\":1,\"bar\":2}"
+         (json-write (hash-table 'string=? '("foo" . 1) '("bar" . 2)) #f))
+  (test* "list -> array" "[1,2,3]" (json-write '(1 2 3) #f))
+  )
 
 ;;; The following code from Gauche-trunk/ext/peg/test.scm
 

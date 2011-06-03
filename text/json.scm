@@ -391,11 +391,11 @@
 
 ;; from rfc.json
 (define (format-number obj)
-  (cond ((not (real? obj))
-         (error "real number expected, but got" obj))
-        ((and (rational? obj) (not (integer? obj)))
-         (display (exact->inexact obj)))
-        (else (display obj))))
+  (cond [(not (real? obj))
+         (error "real number expected, but got" obj)]
+        [(and (rational? obj) (not (integer? obj)))
+         (display (exact->inexact obj))]
+        [else (display obj)]))
 
 (define *escape-table*
   (hash-table 'eqv?
