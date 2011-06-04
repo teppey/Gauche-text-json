@@ -135,7 +135,7 @@
             [(char-set-contains? #[-+0-9] c)
              (get-number-token)]
             [(char-set-contains? #[tfn] c)
-             (get-symbol-token)]
+             (get-literal-token)]
             [(struct-char? c)
              => (^(type)
                   (read-char)
@@ -201,13 +201,13 @@
                              (if (string-null? s) #f s)))
                          (list sign int frac expo)))))
 
-(define (get-symbol-token)
+(define (get-literal-token)
   (let loop ([c (peek-char)]
              [out (open-output-string)])
     (if (and (char? c) (char-set-contains? #[a-z] c))
       (begin (write-char (read-char) out)
              (loop (peek-char) out))
-      (values 'symbol (get-output-string out)))))
+      (values 'literal (get-output-string out)))))
 
 
 ;; ---------------------------------------------------------
@@ -236,10 +236,10 @@
            (values <vector> #f))
          (with-builder (class add! get :size size)
            (parse-array add! get scanner values)))]
-      [(string) (cont (parse-string (token-value token)))]
-      [(number) (cont (parse-number (token-value token)))]
-      [(symbol) (cont (parse-literal (token-value token)))]
-      [else     (error "invalid JSON form")])))
+      [(string)  (cont (parse-string (token-value token)))]
+      [(number)  (cont (parse-number (token-value token)))]
+      [(literal) (cont (parse-literal (token-value token)))]
+      [else      (error "invalid JSON form")])))
 
 (define (parse-object dict scanner cont)
   (let1 token (scanner)
