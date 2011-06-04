@@ -15,9 +15,8 @@
   (use text.parse)
   (use util.match)
   (export json-object
-          json-object?
           json-array
-          json-array?
+          json-object-from-alist?
           <alist>
           json-mime-type
           json-read
@@ -28,7 +27,43 @@
 (select-module text.json)
 
 ;; ---------------------------------------------------------
-;; Alist wrapper class
+;; Reader Parameters
+;;
+;;  json-object
+;;    Thunk must be returns instance of <dictionary>
+;;    subclass.  When this parameter value is #f, JSON
+;;    object to be alist.
+(define json-object
+  (make-parameter #f
+    (match-lambda
+      [#f #f]
+      [(? procedure? thunk) thunk]
+      [badarg (error "procedure or #f required, but got" badarg)])))
+
+;;  json-array
+;;    Thunk must be returns two values, <sequence> subclass
+;;    and size for call-with-builder.  Size may be a #f.
+(define json-array
+  (make-parameter #f
+    (match-lambda
+      [#f #f]
+      [(? procedure? thunk) thunk]
+      [badarg (error "procedure or #f required, but got" badarg)])))
+
+;; ---------------------------------------------------------
+;; Writer Parameters
+;;
+(define json-object-from-alist? (make-parameter #t))
+(define %json-pretty-print? (make-parameter #f))
+(define %json-indent-level  (make-parameter 0))
+(define json-indent-width
+  (make-parameter 2
+    (^n (or (and (integer? n) (>= n 0) (x->integer n))
+            (error "required positive integer or zero, but got" n)))))
+
+
+;; ---------------------------------------------------------
+;; Alist Wrapper Class
 ;;
 (define-class <alist> (<dictionary> <collection>)
   ([pairs :init-value '() :init-keyword :pairs]))
@@ -68,57 +103,6 @@
   (fold (^(pair seed)
           (proc (car pair) (cdr pair) seed))
         seed (~ object 'pairs)))
-
-;; For Parser
-;;
-(define %class? (cut is-a? <> <class>))
-
-;; json-object : #f | thunk
-;;   Thunk must be returns instance of <dictionary> subclass.
-;;   When this parameter value is #f, JSON object to be alist.
-(define json-object
-  (make-parameter #f
-    (match-lambda
-      [#f #f]
-      [(? procedure? thunk) thunk]
-      [badarg (error "procedure or #f required, but got" badarg)])))
-
-;; json-array  : <sequence> subclass | thunk
-;;   Thunk must be returns two values, <sequence> subclass and size for
-;;   call-with-builder. Size may be a #f.
-(define json-array
-  (make-parameter #f
-    (match-lambda
-      [#f #f]
-      [(? procedure? thunk) thunk]
-      [badarg (error "procedure or #f required, but got" badarg)])))
-
-;; For Writer
-;;
-;;  json-object? : #f | class | list of class | predicate
-;;
-(define json-object?
-  (make-parameter #f
-    (match-lambda
-      [#f #f]
-      [(? procedure? pred) pred]
-      [(? %class? cls) (cut is-a? <> cls)]
-      [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
-      [badarg
-        (error "json-object? expected class/(class ...)/procedure, but got" badarg)])))
-
-;;
-;;  json-array? : #f | class | list of class | predicate
-;;
-(define json-array?
-  (make-parameter #f
-    (match-lambda
-      [#f #f]
-      [(? procedure? pred) pred]
-      [(? %class? cls) (cut is-a? <> cls)]
-      [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
-      [badarg
-        (error "json-array? expected class/(class ...)/procedure, but got" badarg)])))
 
 
 ;; ---------------------------------------------------------
@@ -362,24 +346,17 @@
 ;; ---------------------------------------------------------
 ;; Writer
 ;;
-
-;; Parameters for pretty-print
-(define %json-pretty-print? (make-parameter #f))
-(define %json-indent-level  (make-parameter 0))
-(define %json-indent-width
-  (make-parameter 2
-    (^n (or (and (integer? n) (>= n 0) (x->integer n))
-            (error "json-indent-width must be positive integer or zero, but got" n)))))
-
 (define-syntax display-if-pretty
   (syntax-rules ()
     [(_ x) (when (%json-pretty-print?) (display x))]))
 
 (define-syntax newline-and-indent
   (syntax-rules ()
-    [(_) (begin (display-if-pretty #\newline)
-                (display-if-pretty
-                  (make-string (* (%json-indent-level) (%json-indent-width)) #\space)))]))
+    [(_) (begin
+           (display-if-pretty #\newline)
+           (display-if-pretty
+             (make-string
+               (* (%json-indent-level) (json-indent-width)) #\space)))]))
 
 (define-syntax with-indent
   (syntax-rules ()
@@ -387,25 +364,19 @@
      (parameterize ([%json-indent-level (+ 1 (%json-indent-level))])
        body ...)]))
 
-;; TOOD: handle symbol 'true', 'false' to boolean?
+;; TOOD: symbol 'true', 'false' to boolean?
 (define (format-json obj)
   (cond
-    ;; simple value
     [(number? obj)  (format-number obj)]
     [(string? obj)  (format-string obj)]
     [(boolean? obj) (format-literal obj)]
     [(symbol? obj)  (format-literal obj)]
-    ;; test container with parameter if set
-    [(json-object?) (^p (and (procedure? p) (p obj)))
-      => (^_ (format-object (wrap-alist obj)))]
-    [(json-array?)  (^p (and (procedure? p) (p obj)))
-      => (^_ (format-array obj))]
-    ;; determine container
-    [(any (pa$ is-a? obj) `(,<dictionary> ,<list>))
+    [(or (is-a? obj <dictionary>)
+         (and (json-object-from-alist?)
+              (list? obj)))
      (format-object (wrap-alist obj))]
-    [(is-a? obj <sequence>)
-     (format-array obj)]
-    ;; unexpected object
+    [(is-a? obj <sequence>) (format-array obj)]
+    ;; unexpected
     [else (error "unexpected object" obj)]))
 
 ;; from rfc.json
@@ -493,11 +464,8 @@
           (else
             (error "output port required, but got" output)))))
 
-(define json-indent-width %json-indent-width)
-
 (define (json-write* obj . output)
   (parameterize ([%json-pretty-print? #t])
     (apply json-write obj output)))
-
 
 (provide "text/json")
