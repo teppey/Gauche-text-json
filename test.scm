@@ -42,7 +42,7 @@
         }
    }")
 (parameterize ([json-object (cut make-hash-table 'string=?)]
-               [json-array  <list>])
+               [json-array  (cut values <list> #f)])
   (let1 o (json-read json-text-sample)
     (test* "hashtable?" #t (is-a? o <hash-table>))
     (test* "hashtable?" #t (is-a? (~ o "Image") <hash-table>))

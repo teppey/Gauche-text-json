@@ -75,23 +75,23 @@
 
 ;; json-object : #f | thunk
 ;;   Thunk must be returns instance of <dictionary> subclass.
-;;   When this parameter value if #f, JSON object to be alist.
+;;   When this parameter value is #f, JSON object to be alist.
 (define json-object
   (make-parameter #f
     (match-lambda
       [#f #f]
       [(? procedure? thunk) thunk]
-      [badparam (error "procedure or #f required, but got" badparam)])))
+      [badarg (error "procedure or #f required, but got" badarg)])))
 
 ;; json-array  : <sequence> subclass | thunk
-;;   thunk returns two values, class and size for call-with-builder.
-;;   memo: need check that parameter is <sequence> subclass?
+;;   Thunk must be returns two values, <sequence> subclass and size for
+;;   call-with-builder. Size may be a #f.
 (define json-array
-  (make-parameter <vector>
+  (make-parameter #f
     (match-lambda
+      [#f #f]
       [(? procedure? thunk) thunk]
-      [(? %class? cls) (cut values cls #f)]
-      [badarg (error "json-array must be class or procedure, but got" badarg)])))
+      [badarg (error "procedure or #f required, but got" badarg)])))
 
 ;; For Writer
 ;;
@@ -119,7 +119,6 @@
       [(and clss [($ <class>) ..1] ) (^o (any (pa$ is-a? o) clss))]
       [badarg
         (error "json-array? expected class/(class ...)/procedure, but got" badarg)])))
-
 
 
 ;; ---------------------------------------------------------
@@ -247,7 +246,10 @@
                     (make <alist>))
          (parse-object dict scanner cont))]
       [(begin-array)
-       (receive (class size) ((json-array))
+       (receive (class size)
+         (if-let1 thunk (json-array)
+           (thunk)
+           (values <vector> #f))
          (call-with-builder class
            (cut parse-array <> <> scanner values) :size size))]
       [(string) (cont (parse-string (token-value token)))]
