@@ -55,6 +55,10 @@
   (test* "list -> array" "[1,2,3]" (json-write '(1 2 3) #f))
   )
 
+;; writer allow symbol `true' and 'false'
+(test* "symbol true -> literal" "[true]" (json-write #(true) #f))
+(test* "symbol false -> literal" "[false]" (json-write #(false) #f))
+
 ;;; The following code from Gauche-trunk/ext/peg/test.scm
 
 (test* "write object" "{\"foo\":1,\"bar\":2}" (json-write '(("foo" . 1) ("bar" . 2)) #f))

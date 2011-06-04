@@ -370,8 +370,8 @@
   (cond
     [(number? obj)  (format-number obj)]
     [(string? obj)  (format-string obj)]
-    [(boolean? obj) (format-literal obj)]
-    [(symbol? obj)  (format-literal obj)]
+    [(boolean? obj) (format-literal-boolean obj)]
+    [(symbol? obj)  (format-literal-symbol obj)]
     [(or (is-a? obj <dictionary>)
          (and (json-object-from-alist?)
               (list? obj)))
@@ -406,11 +406,13 @@
     obj)
   (display "\""))
 
-(define format-literal
-  (.$ display (match-lambda
-                ['null "null"]
-                [#t    "true"]
-                [#f    "false"])))
+(define (format-literal-boolean obj)
+  (display (if obj "true" "false")))
+
+(define (format-literal-symbol obj)
+  (if-let1 r (memq obj '(null true false))
+    (display (symbol->string (car r)))
+    (error "unexpected symbol" obj)))
 
 (define-method format-object ([obj <dictionary>])
   (display #\{)
