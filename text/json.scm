@@ -6,14 +6,12 @@
 ;;; http://www.ietf.org/rfc/rfc4627
 
 (define-module text.json
-  (use gauche.parameter)
   (use gauche.dictionary)
+  (use gauche.parameter :only (make-parameter parameterize))
   (use gauche.sequence)
-  (use srfi-1)
   (use srfi-13 :only (string-null? string-for-each))
-  (use srfi-43)
-  (use text.parse)
-  (use util.match)
+  (use text.parse :only (skip-while))
+  (use util.match :only (match match-lambda))
   (export json-object
           json-array
           json-object-from-alist?
@@ -137,73 +135,73 @@
 
   (skip-while *white-space-chars*)
   (let1 c (peek-char)
-    (cond ((eof-object? c)
-           (values (read-char) #f))
-          ((char=? c #\")
-           (get-string-token))
-          ((char-set-contains? #[-+0-9] c)
-           (get-number-token))
-          ((char-set-contains? #[tfn] c)
-           (get-symbol-token))
-          ((struct-char? c)
+    (cond [(eof-object? c)
+           (values (read-char) #f)]
+          [(char=? c #\")
+           (get-string-token)]
+          [(char-set-contains? #[-+0-9] c)
+           (get-number-token)]
+          [(char-set-contains? #[tfn] c)
+           (get-symbol-token)]
+          [(struct-char? c)
            => (lambda (p)
                 (read-char)
-                (values (cdr p) #f)))
-          (else
-            (error "invalid JSON form")))))
+                (values (cdr p) #f))]
+          [else
+            (error "invalid JSON form")])))
 
 (define (get-string-token)
   (read-char)
-  (let loop ((c (read-char))
-             (out (open-output-string)))
-    (cond ((eof-object? c)
-           (error "unexpected EOF at" (get-output-string out)))
-          ((char=? c #\")
-           (values 'string (get-output-string out)))
-          ((char=? c #\\)
+  (let loop ([c (read-char)]
+             [out (open-output-string)])
+    (cond [(eof-object? c)
+           (error "unexpected EOF at" (get-output-string out))]
+          [(char=? c #\")
+           (values 'string (get-output-string out))]
+          [(char=? c #\\)
            (write-char c out)
            (write-char (read-char) out)
-           (loop (read-char) out))
-          (else
+           (loop (read-char) out)]
+          [else
             (write-char c out)
-            (loop (read-char) out)))))
+            (loop (read-char) out)])))
 
 (define (get-number-token)
-  (let ((sign (open-output-string))
-        (int  (open-output-string))
-        (frac (open-output-string))
-        (expo (open-output-string)))
+  (let ([sign (open-output-string)]
+        [int  (open-output-string)]
+        [frac (open-output-string)]
+        [expo (open-output-string)])
     ;; sign
     (when (char-set-contains? #[-+] (peek-char))
       (write-char (read-char) sign))
     ;; integer
-    (let loop ((c (peek-char)))
+    (let loop ([c (peek-char)])
       (when (char-set-contains? #[0-9] c)
         (write-char (read-char) int)
         (loop (peek-char))))
     ;; fraction
     (when (char=? (peek-char) #\.)
       (write-char (read-char) frac)
-      (let loop ((c (peek-char)))
+      (let loop ([c (peek-char)])
         (when (char-set-contains? #[0-9] c)
           (write-char (read-char) frac)
           (loop (peek-char)))))
     ;; exponent
     (when (char-set-contains? #[eE] (peek-char))
       (write-char (read-char) expo)
-      (let loop ((c (peek-char)))
+      (let loop ([c (peek-char)])
         (when (char-set-contains? #[-+0-9] c)
           (write-char (read-char) expo)
           (loop (peek-char)))))
 
-    (values 'number (map (lambda (out)
+    (values 'number (map (^(out)
                            (let1 s (get-output-string out)
                              (if (string-null? s) #f s)))
                          (list sign int frac expo)))))
 
 (define (get-symbol-token)
-  (let loop ((c (peek-char))
-             (out (open-output-string)))
+  (let loop ([c (peek-char)]
+             [out (open-output-string)])
     (if (and (char? c) (char-set-contains? #[a-z] c))
       (begin (write-char (read-char) out)
              (loop (peek-char) out))
@@ -238,7 +236,7 @@
            (cut parse-array <> <> scanner values) :size size))]
       [(string) (cont (parse-string (token-value token)))]
       [(number) (cont (parse-number (token-value token)))]
-      [(symbol) (cont (parse-symbol (token-value token)))]
+      [(symbol) (cont (parse-literal (token-value token)))]
       [else     (error "invalid JSON form")])))
 
 (define (parse-object dict scanner cont)
@@ -248,10 +246,10 @@
                              dict)]
       [(value-separator) (parse-object dict scanner cont)]
       [(string)
-       (let ((sep (scanner)))
+       (let ([sep (scanner)])
          (unless (eq? (token-type sep) 'name-separator)
            (error "invalid JSON object form"))
-         (let ((key (parse-string (token-value token))))
+         (let ([key (parse-string (token-value token))])
            (dict-put! dict key (parse-any scanner values))
            (parse-object dict scanner cont)))]
       [else (error "invalid JSON object form" token)]
@@ -269,39 +267,40 @@
 (define (parse-string value)
   (with-string-io value
     (lambda ()
-      (let loop ((c (read-char))
-                 (chars '()))
-        (cond ((eof-object? c)
-               (display (list->string (reverse! chars))))
-              ((char=? c #\\)
-               (let ((cc (read-char)))
-                 (cond ((char=? cc #\u)
-                        (let1 uc (parse-unicode-char)
-                          (loop (read-char) (cons uc chars))))
-                       ((char=? cc #\") (loop (read-char) (cons cc chars)))
-                       ((char=? cc #\\) (loop (read-char) (cons cc chars)))
-                       ((char=? cc #\/) (loop (read-char) (cons cc chars)))
-                       ((char=? cc #\b) (loop (read-char) (cons #\x08 chars)))
-                       ((char=? cc #\f) (loop (read-char) (cons #\page chars)))
-                       ((char=? cc #\n)
-                        (loop (read-char) (cons #\newline chars)))
-                       ((char=? cc #\r)
-                        (loop (read-char) (cons #\return chars)))
-                       ((char=? cc #\t) (loop (read-char) (cons #\tab chars)))
-                       (else (loop (read-char) (cons cc chars))))))
-              (else (loop (read-char) (cons c chars))))))))
+      (let loop ([c (read-char)] [chars '()])
+        (cond
+          [(eof-object? c)
+           (display (list->string (reverse! chars)))]
+          [(char=? c #\\)
+           (let ([cc (read-char)])
+             (cond
+               [(char=? cc #\u)
+                (let1 uc (parse-unicode-char)
+                  (loop (read-char) (cons uc chars)))]
+               [(char=? cc #\") (loop (read-char) (cons cc chars))]
+               [(char=? cc #\\) (loop (read-char) (cons cc chars))]
+               [(char=? cc #\/) (loop (read-char) (cons cc chars))]
+               [(char=? cc #\b) (loop (read-char) (cons #\x08 chars))]
+               [(char=? cc #\f) (loop (read-char) (cons #\page chars))]
+               [(char=? cc #\n)
+                (loop (read-char) (cons #\newline chars))]
+               [(char=? cc #\r)
+                (loop (read-char) (cons #\return chars))]
+               [(char=? cc #\t) (loop (read-char) (cons #\tab chars))]
+               [else (loop (read-char) (cons cc chars))]))]
+          [else (loop (read-char) (cons c chars))])))))
 
 (define (parse-unicode-char)
-  (let ((chars '()))
+  (let ([chars '()])
     (dotimes (_ 4)
       (push! chars (read-char)))
-    (let ((n (string->number (list->string (reverse! chars)) 16)))
-      (cond ((not n)
-             (error "invalid unicode form"))
-            ((<= #xD800 n #xDBFF)
-             (surrogate-pair n))
-            (else
-              (ucs->char n))))))
+    (let ([n (string->number (list->string (reverse! chars)) 16)])
+      (cond [(not n)
+             (error "invalid unicode form")]
+            [(<= #xD800 n #xDBFF)
+             (surrogate-pair n)]
+            [else
+              (ucs->char n)]))))
 
 (define (surrogate-pair hi)
   (read-char)  ; skip `\'
@@ -309,17 +308,17 @@
   (let1 chars '()
     (dotimes (_ 4)
       (push! chars (read-char)))
-    (let ((low (string->number (list->string (reverse! chars)) 16)))
+    (let ([low (string->number (list->string (reverse! chars)) 16)])
       (unless (or low (<= #xDC00 low #xDFFF))
         (error "invalide unicode surrogate pair"))
       (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF))))))
 
-(define (parse-symbol value)
+(define (parse-literal value)
   (case (string->symbol value)
-    ((true)  #t)
-    ((false) #f)
-    ((null)  'null)
-    (else (error "unexpected symbol" value))))
+    [(true)  #t]
+    [(false) #f]
+    [(null)  'null]
+    [else (error "unexpected literal" value)]))
 
 (define (parse-number parts)
   (define (sign->number s)
@@ -376,7 +375,6 @@
               (list? obj)))
      (format-object (wrap-alist obj))]
     [(is-a? obj <sequence>) (format-array obj)]
-    ;; unexpected
     [else (error "unexpected object" obj)]))
 
 ;; from rfc.json
@@ -448,21 +446,21 @@
 
 (define (json-read . input)
   (let1 input (get-optional input (current-input-port))
-    (cond ((string? input)
-           (call-with-input-string input parse-json))
-          ((input-port? input)
-           (parse-json input))
-          (else
-            (error "input port or string required, but got" input)))))
+    (cond [(string? input)
+           (call-with-input-string input parse-json)]
+          [(input-port? input)
+           (parse-json input)]
+          [else
+            (error "input port or string required, but got" input)])))
 
 (define (json-write obj . output)
   (let1 output (get-optional output (current-output-port))
-    (cond ((not output)
-           (with-output-to-string (pa$ format-json obj)))
-          ((output-port? output)
-           (with-output-to-port output (pa$ format-json obj)))
-          (else
-            (error "output port required, but got" output)))))
+    (cond [(not output)
+           (with-output-to-string (pa$ format-json obj))]
+          [(output-port? output)
+           (with-output-to-port output (pa$ format-json obj))]
+          [else
+            (error "output port required, but got" output)])))
 
 (define (json-write* obj . output)
   (parameterize ([%json-pretty-print? #t])
