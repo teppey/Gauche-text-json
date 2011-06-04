@@ -106,23 +106,43 @@
 ;; ---------------------------------------------------------
 ;; Scanner
 ;;
-(define *white-space-chars* #[\x20\x09\x0a\x0d])
-(define *struct-chars-table*
-  (hash-table 'eqv?
-    '(#\[ . begin-array )
-    '(#\] . end-array)
-    '(#\{ . begin-object)
-    '(#\} . end-object)
-    '(#\: . name-separator)
-    '(#\, . value-separator)))
 
 (define *token-buffer* #f)
 (define (make-token type value) (vector type value))
 (define (token-type token) (vector-ref token 0))
 (define (token-value token) (vector-ref token 1))
-(define (unget-token! token) (set! *token-buffer* token))
+(define (unget-token! token)
+  (set! *token-buffer* token))
 
 (define (make-scanner iport)
+  (define *white-space-chars* #[\x20\x09\x0a\x0d])
+  (define *struct-chars-table*
+    (hash-table 'eqv?
+      '(#\[ . begin-array )
+      '(#\] . end-array)
+      '(#\{ . begin-object)
+      '(#\} . end-object)
+      '(#\: . name-separator)
+      '(#\, . value-separator)))
+  (define (scan)
+    (define (struct-char? c)
+      (hash-table-get *struct-chars-table* c #f))
+    (skip-while *white-space-chars*)
+    (let1 c (peek-char)
+      (cond [(eof-object? c)
+             (values (read-char) #f)]
+            [(char=? c #\")
+             (get-string-token)]
+            [(char-set-contains? #[-+0-9] c)
+             (get-number-token)]
+            [(char-set-contains? #[tfn] c)
+             (get-symbol-token)]
+            [(struct-char? c)
+             => (^(type)
+                  (read-char)
+                  (values type #f))]
+            [else
+              (error "invalid JSON form")])))
   (lambda ()
     (if *token-buffer*
       (begin0 *token-buffer*
@@ -130,27 +150,6 @@
       (receive (type value)
         (with-input-from-port iport scan)
         (make-token type value)))))
-
-(define (scan)
-  (define (struct-char? c)
-    (hash-table-get *struct-chars-table* c #f))
-
-  (skip-while *white-space-chars*)
-  (let1 c (peek-char)
-    (cond [(eof-object? c)
-           (values (read-char) #f)]
-          [(char=? c #\")
-           (get-string-token)]
-          [(char-set-contains? #[-+0-9] c)
-           (get-number-token)]
-          [(char-set-contains? #[tfn] c)
-           (get-symbol-token)]
-          [(struct-char? c)
-           => (^(type)
-                (read-char)
-                (values type #f))]
-          [else
-            (error "invalid JSON form")])))
 
 (define (get-string-token)
   (read-char)
