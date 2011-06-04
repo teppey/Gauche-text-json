@@ -364,8 +364,13 @@
      (parameterize ([%json-indent-level (+ 1 (%json-indent-level))])
        body ...)]))
 
-;; TOOD: symbol 'true', 'false' to boolean?
 (define (format-json obj)
+  (if (and (is-a? obj <collection>)
+           (not (string? obj)))
+    (format-any obj)
+    (error "expect insntance of <collection> except <string>, bug got" obj)))
+
+(define (format-any obj)
   (cond
     [(number? obj)  (format-number obj)]
     [(string? obj)  (format-string obj)]
@@ -423,7 +428,7 @@
         (format-string key)
         (display #\:)
         (display-if-pretty #\space)
-        (format-json value)
+        (format-any value)
         #\,)
       ""))
   (newline-and-indent)
@@ -435,7 +440,7 @@
     (fold (^(value comma)
             (display comma)
             (newline-and-indent)
-            (format-json value)
+            (format-any value)
             #\,)
           "" obj))
   (newline-and-indent)

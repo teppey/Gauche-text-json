@@ -42,7 +42,12 @@
   (test* "list -> array" "[1,2,3]" (json-write '(1 2 3) #f))
   )
 
-;; writer allow symbol `true' and 'false'
+;; Writer accepts only instance of <collection> except <string>
+(test* "not json" (test-error) (json-write 1 #f))
+(test* "not json" (test-error) (json-write "foo" #f))
+(test* "not json" (test-error) (json-write 'true #f))
+
+;; Writer allow symbol `true' and 'false'
 (test* "symbol true -> literal" "[true]" (json-write #(true) #f))
 (test* "symbol false -> literal" "[false]" (json-write #(false) #f))
 
