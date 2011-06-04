@@ -28,7 +28,7 @@
 (select-module text.json)
 
 ;; ---------------------------------------------------------
-;; Aassociate list wrapper class
+;; Alist wrapper class
 ;;
 (define-class <alist> (<dictionary> <collection>)
   ([pairs :init-value '() :init-keyword :pairs]))
@@ -73,15 +73,15 @@
 ;;
 (define %class? (cut is-a? <> <class>))
 
-;; json-object : <dictionary> subclass | thunk
-;;   thunk returns instance of <dictionary> subclass.
-;;   memo: need check that parameter is <dictionary> subclass?
+;; json-object : #f | thunk
+;;   Thunk must be returns instance of <dictionary> subclass.
+;;   When this parameter value if #f, JSON object to be alist.
 (define json-object
-  (make-parameter <alist>
+  (make-parameter #f
     (match-lambda
+      [#f #f]
       [(? procedure? thunk) thunk]
-      [(? %class? cls) (cut make cls)]
-      [badarg (error "json-object must be class or procedure, but got" badarg)])))
+      [badparam (error "procedure or #f required, but got" badparam)])))
 
 ;; json-array  : <sequence> subclass | thunk
 ;;   thunk returns two values, class and size for call-with-builder.
@@ -235,7 +235,10 @@
          (token (scanner)))
     (case (token-type token)
       ((begin-object)
-       (parse-object ((json-object)) scanner values))
+       (let1 dict (if-let1 thunk (json-object)
+                    (thunk)
+                    (make <alist>))
+         (parse-object dict scanner values)))
       ((begin-array)
        (receive (class size) ((json-array))
          (call-with-builder class
@@ -246,7 +249,10 @@
   (let1 token (scanner)
     (case (token-type token)
       ((begin-object)
-       (parse-object ((json-object)) scanner cont))
+       (let1 dict (if-let1 thunk (json-object)
+                    (thunk)
+                    (make <alist>))
+         (parse-object dict scanner cont)))
       ((begin-array)
        (receive (class size) ((json-array))
          (call-with-builder class
