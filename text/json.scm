@@ -232,8 +232,8 @@
          (if-let1 thunk (json-array)
            (thunk)
            (values <vector> #f))
-         (call-with-builder class
-           (cut parse-array <> <> scanner values) :size size))]
+         (with-builder (class add! get :size size)
+           (parse-array add! get scanner values)))]
       [(string) (cont (parse-string (token-value token)))]
       [(number) (cont (parse-number (token-value token)))]
       [(symbol) (cont (parse-literal (token-value token)))]
