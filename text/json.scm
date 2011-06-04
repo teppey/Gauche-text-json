@@ -108,17 +108,18 @@
 ;;
 (define *white-space-chars* #[\x20\x09\x0a\x0d])
 (define *struct-chars-table*
-  '((#\[ . begin-array )
-    (#\] . end-array)
-    (#\{ . begin-object)
-    (#\} . end-object)
-    (#\: . name-separator)
-    (#\, . value-separator)))
+  (hash-table 'eqv?
+    '(#\[ . begin-array )
+    '(#\] . end-array)
+    '(#\{ . begin-object)
+    '(#\} . end-object)
+    '(#\: . name-separator)
+    '(#\, . value-separator)))
 
 (define *token-buffer* #f)
 (define (unget-token! token) (set! *token-buffer* token))
-(define (token-type token)  (car token))
-(define (token-value token) (cdr token))
+(define (token-type token)  (vector-ref token 0))
+(define (token-value token) (vector-ref token 1))
 
 (define (make-scanner iport)
   (lambda ()
@@ -127,11 +128,11 @@
         (set! *token-buffer* #f))
       (receive (type value)
         (with-input-from-port iport scan)
-        (cons type value)))))
+        (vector type value)))))
 
 (define (scan)
   (define (struct-char? c)
-    (assv c *struct-chars-table*))
+    (hash-table-get *struct-chars-table* c #f))
 
   (skip-while *white-space-chars*)
   (let1 c (peek-char)
@@ -144,9 +145,9 @@
           [(char-set-contains? #[tfn] c)
            (get-symbol-token)]
           [(struct-char? c)
-           => (lambda (p)
+           => (^(type)
                 (read-char)
-                (values (cdr p) #f))]
+                (values type #f))]
           [else
             (error "invalid JSON form")])))
 
