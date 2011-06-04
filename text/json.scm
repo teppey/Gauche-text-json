@@ -107,12 +107,11 @@
 ;; Scanner
 ;;
 
-(define *token-buffer* #f)
 (define (make-token type value) (vector type value))
 (define (token-type token) (vector-ref token 0))
 (define (token-value token) (vector-ref token 1))
-(define (unget-token! token)
-  (set! *token-buffer* token))
+(define (unget-token! scanner token)
+  (scanner token))
 
 (define (make-scanner iport)
   (define *white-space-chars* #[\x20\x09\x0a\x0d])
@@ -143,13 +142,15 @@
                   (values type #f))]
             [else
               (error "invalid JSON form")])))
-  (lambda ()
-    (if *token-buffer*
-      (begin0 *token-buffer*
-        (set! *token-buffer* #f))
-      (receive (type value)
-        (with-input-from-port iport scan)
-        (make-token type value)))))
+  (define *token-buffer* #f)
+  (case-lambda
+    [() (if *token-buffer*
+          (begin0 *token-buffer*
+            (set! *token-buffer* #f))
+          (receive (type value)
+            (with-input-from-port iport scan)
+            (make-token type value)))]
+    [(token) (set! *token-buffer* token)]))
 
 (define (get-string-token)
   (read-char)
@@ -216,7 +217,7 @@
   (let* ([scanner (make-scanner input)]
          [token (scanner)])
     (if (memq (token-type token) '(begin-object begin-array))
-      (begin (unget-token! token)
+      (begin (unget-token! scanner token)
              (parse-any scanner values))
       (error "Invalid JSON syntax"))))
 
@@ -261,7 +262,7 @@
     (case (token-type token)
       [(end-array)       (get)]
       [(value-separator) (parse-array add! get scanner cont)]
-      [else (unget-token! token)
+      [else (unget-token! scanner token)
             (add! (parse-any scanner values))
             (parse-array add! get scanner cont)])))
 
