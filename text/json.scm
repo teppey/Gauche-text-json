@@ -65,8 +65,10 @@
 (define-class <alist> (<dictionary> <collection>)
   ([pairs :init-value '() :init-keyword :pairs]))
 
-(define-method unwrap ((object <alist>))
-  (reverse (~ object 'pairs)))
+(define (unwrap obj)
+  (if (is-a? obj <alist>)
+    (reverse! (~ obj 'pairs))
+    obj))
 
 (define (wrap-alist obj)
   (if (list? obj)
@@ -217,53 +219,52 @@
          [token (scanner)])
     (if (memq (token-type token) '(begin-object begin-array))
       (begin (unget-token! scanner token)
-             (parse-any scanner values))
+             (parse-any scanner))
       (error "Invalid JSON syntax"))))
 
-(define (parse-any scanner cont)
+(define (parse-any scanner)
   (let1 token (scanner)
     (case (token-type token)
       [(begin-object)
        (let1 dict (if-let1 thunk (json-object)
                     (thunk)
                     (make <alist>))
-         (parse-object dict scanner cont))]
+         (parse-object dict scanner))]
       [(begin-array)
        (receive (class size)
          (if-let1 thunk (json-array)
            (thunk)
            (values <vector> #f))
          (with-builder (class add! get :size size)
-           (parse-array add! get scanner values)))]
-      [(string)  (cont (parse-string (token-value token)))]
-      [(number)  (cont (parse-number (token-value token)))]
-      [(literal) (cont (parse-literal (token-value token)))]
-      [else      (error "invalid JSON form")])))
+           (parse-array add! get scanner)))]
+      [(string)  (parse-string (token-value token))]
+      [(number)  (parse-number (token-value token))]
+      [(literal) (parse-literal (token-value token))]
+      [else      (error "invalid JSON syntax")])))
 
-(define (parse-object dict scanner cont)
+(define (parse-object dict scanner)
   (let1 token (scanner)
     (case (token-type token)
-      [(end-object)      (or (and (is-a? dict <alist>) (unwrap dict))
-                             dict)]
-      [(value-separator) (parse-object dict scanner cont)]
+      [(end-object) (unwrap dict)]
+      [(value-separator) (parse-object dict scanner)]
       [(string)
        (let ([sep (scanner)])
          (unless (eq? (token-type sep) 'name-separator)
-           (error "invalid JSON object form"))
+           (error "invalid JSON object syntax"))
          (let ([key (parse-string (token-value token))])
-           (dict-put! dict key (parse-any scanner values))
-           (parse-object dict scanner cont)))]
-      [else (error "invalid JSON object form" token)]
+           (dict-put! dict key (parse-any scanner))
+           (parse-object dict scanner)))]
+      [else (error "invalid JSON object syntax" token)]
       )))
 
-(define (parse-array add! get scanner cont)
+(define (parse-array add! get scanner)
   (let1 token (scanner)
     (case (token-type token)
-      [(end-array)       (get)]
-      [(value-separator) (parse-array add! get scanner cont)]
+      [(end-array) (get)]
+      [(value-separator) (parse-array add! get scanner)]
       [else (unget-token! scanner token)
-            (add! (parse-any scanner values))
-            (parse-array add! get scanner cont)])))
+            (add! (parse-any scanner))
+            (parse-array add! get scanner)])))
 
 (define (parse-string value)
   (with-string-io value
