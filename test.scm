@@ -12,19 +12,6 @@
 (use text.json)
 (test-module 'text.json)
 
-(test-section "alist wrap class")
-(let ((obj (make <alist>)))
-  (test* "object is <dictionary>" #t (is-a? obj <dictionary>))
-  (dict-put! obj "foo" 1)
-  (dict-put! obj "bar" 'a)
-  (dict-put! obj "baz" "b")
-  (test* "lookup" 1 (dict-get obj "foo"))
-  (test* "lookup(missing)" #f (dict-get obj 'foo))
-  (test* "lookup(fallback)" 'nothing (dict-get obj 'foo 'nothing))
-  (dict-delete! obj "bar")
-  (test* "delete" #f (dict-get obj "bar"))
-  )
-
 ;; Parameterize Container
 (test-section "parameterize")
 (define json-text-sample

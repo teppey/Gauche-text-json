@@ -15,7 +15,6 @@
   (export json-object
           json-array
           json-object-from-alist?
-          <alist>
           json-mime-type
           json-read
           json-write
