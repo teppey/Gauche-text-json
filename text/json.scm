@@ -235,36 +235,38 @@
          (if-let1 thunk (json-array)
            (thunk)
            (values <vector> #f))
-         (with-builder (class add! get :size size)
-           (parse-array add! get scanner)))]
+         (parse-array class size scanner))]
       [(string)  (parse-string (token-value token))]
       [(number)  (parse-number (token-value token))]
       [(literal) (parse-literal (token-value token))]
       [else      (error "invalid JSON syntax")])))
 
+;; TODO: check trailing comma
 (define (parse-object dict scanner)
-  (let1 token (scanner)
+  (let loop ([token (scanner)])
     (case (token-type token)
       [(end-object) (unwrap dict)]
-      [(value-separator) (parse-object dict scanner)]
+      [(value-separator) (loop (scanner))]
       [(string)
        (let ([sep (scanner)])
          (unless (eq? (token-type sep) 'name-separator)
            (error "invalid JSON object syntax"))
          (let ([key (parse-string (token-value token))])
            (dict-put! dict key (parse-any scanner))
-           (parse-object dict scanner)))]
+           (loop (scanner))))]
       [else (error "invalid JSON object syntax" token)]
       )))
 
-(define (parse-array add! get scanner)
-  (let1 token (scanner)
-    (case (token-type token)
-      [(end-array) (get)]
-      [(value-separator) (parse-array add! get scanner)]
-      [else (unget-token! scanner token)
-            (add! (parse-any scanner))
-            (parse-array add! get scanner)])))
+;; TODO: check trailing comma
+(define (parse-array class size scanner)
+  (with-builder (class add! get :size size)
+    (let loop ([token (scanner)])
+      (case (token-type token)
+        [(end-array) (get)]
+        [(value-separator) (loop (scanner))]
+        [else (unget-token! scanner token)
+              (add! (parse-any scanner))
+              (loop (scanner))]))))
 
 (define (parse-string value)
   (with-string-io value
