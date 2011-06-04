@@ -117,9 +117,10 @@
     '(#\, . value-separator)))
 
 (define *token-buffer* #f)
-(define (unget-token! token) (set! *token-buffer* token))
-(define (token-type token)  (vector-ref token 0))
+(define (make-token type value) (vector type value))
+(define (token-type token) (vector-ref token 0))
 (define (token-value token) (vector-ref token 1))
+(define (unget-token! token) (set! *token-buffer* token))
 
 (define (make-scanner iport)
   (lambda ()
@@ -128,7 +129,7 @@
         (set! *token-buffer* #f))
       (receive (type value)
         (with-input-from-port iport scan)
-        (vector type value)))))
+        (make-token type value)))))
 
 (define (scan)
   (define (struct-char? c)
