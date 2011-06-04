@@ -135,7 +135,7 @@
     (#\, . value-separator)))
 
 (define *token-buffer* #f)
-(define (unget-token token) (set! *token-buffer* token))
+(define (unget-token! token) (set! *token-buffer* token))
 (define (token-type token)  (car token))
 (define (token-value token) (cdr token))
 
@@ -231,36 +231,29 @@
 ;; Parser
 ;;
 (define (parse-json input)
-  (let* ((scanner (make-scanner input))
-         (token (scanner)))
-    (case (token-type token)
-      ((begin-object)
-       (let1 dict (if-let1 thunk (json-object)
-                    (thunk)
-                    (make <alist>))
-         (parse-object dict scanner values)))
-      ((begin-array)
-       (receive (class size) ((json-array))
-         (call-with-builder class
-           (cut parse-array <> <> scanner values) :size size)))
-      (else           (error "JSON must be object or array")))))
+  (let* ([scanner (make-scanner input)]
+         [token (scanner)])
+    (if (memq (token-type token) '(begin-object begin-array))
+      (begin (unget-token! token)
+             (parse-any scanner values))
+      (error "Invalid JSON syntax"))))
 
 (define (parse-any scanner cont)
   (let1 token (scanner)
     (case (token-type token)
-      ((begin-object)
+      [(begin-object)
        (let1 dict (if-let1 thunk (json-object)
                     (thunk)
                     (make <alist>))
-         (parse-object dict scanner cont)))
-      ((begin-array)
+         (parse-object dict scanner cont))]
+      [(begin-array)
        (receive (class size) ((json-array))
          (call-with-builder class
-           (cut parse-array <> <> scanner values) :size size)))
-      ((string)       (cont (parse-string (token-value token))))
-      ((number)       (cont (parse-number (token-value token))))
-      ((symbol)       (cont (parse-symbol (token-value token))))
-      (else           (error "invalid JSON form")))))
+           (cut parse-array <> <> scanner values) :size size))]
+      [(string) (cont (parse-string (token-value token)))]
+      [(number) (cont (parse-number (token-value token)))]
+      [(symbol) (cont (parse-symbol (token-value token)))]
+      [else     (error "invalid JSON form")])))
 
 (define (parse-object dict scanner cont)
   (let1 token (scanner)
@@ -283,7 +276,7 @@
     (case (token-type token)
       [(end-array)       (get)]
       [(value-separator) (parse-array add! get scanner cont)]
-      [else (unget-token token)
+      [else (unget-token! token)
             (add! (parse-any scanner values))
             (parse-array add! get scanner cont)])))
 
