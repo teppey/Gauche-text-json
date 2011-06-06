@@ -186,12 +186,7 @@
     (list sign int frac expo)))
 
 (define (scan-literal)
-  (let loop ([c (peek-char)]
-             [out (open-output-string)])
-    (if (and (char? c) (char-set-contains? #[a-z] c))
-      (begin (write-char (read-char) out)
-             (loop (peek-char) out))
-      (get-output-string out))))
+  (next-token-of char-lower-case?))
 
 
 ;; ---------------------------------------------------------
