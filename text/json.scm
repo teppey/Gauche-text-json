@@ -10,7 +10,7 @@
   (use gauche.parameter :only (make-parameter parameterize))
   (use gauche.sequence)
   (use srfi-13 :only (string-null? string-for-each))
-  (use text.parse :only (skip-while assert-curr-char))
+  (use text.parse :only (skip-while assert-curr-char next-token-of))
   (use util.match :only (match match-lambda))
   (export json-object
           json-array
@@ -165,36 +165,25 @@
                 (loop (read-char))])))))
 
 (define (scan-number)
-  (let ([sign (open-output-string)]
-        [int  (open-output-string)]
-        [frac (open-output-string)]
-        [expo (open-output-string)])
-    ;; sign
-    (when (char-set-contains? #[-+] (peek-char))
-      (write-char (read-char) sign))
-    ;; integer
-    (let loop ([c (peek-char)])
-      (when (char-set-contains? #[0-9] c)
-        (write-char (read-char) int)
-        (loop (peek-char))))
-    ;; fraction
-    (when (char=? (peek-char) #\.)
-      (write-char (read-char) frac)
-      (let loop ([c (peek-char)])
-        (when (char-set-contains? #[0-9] c)
-          (write-char (read-char) frac)
-          (loop (peek-char)))))
-    ;; exponent
-    (when (char-set-contains? #[eE] (peek-char))
-      (write-char (read-char) expo)
-      (let loop ([c (peek-char)])
-        (when (char-set-contains? #[-+0-9] c)
-          (write-char (read-char) expo)
-          (loop (peek-char)))))
-
-    (map (^(out) (let1 s (get-output-string out)
-                   (and (not (string-null? s)) s)))
-         (list sign int frac expo))))
+  (define (sign)
+    (case (peek-char)
+      [(#\-) (read-char) -1]
+      [(#\+) (read-char)  1]
+      [else 1]))
+  (define (int)
+    (next-token-of char-numeric?))
+  (define (frac)
+    (if (char=? (peek-char) #\.)
+      (let1 dot (read-char)
+        #`",|dot|,(next-token-of char-numeric?)")
+      #f))
+  (define (exponent)
+    (if (char-set-contains? #[eE] (peek-char))
+      (let1 e (read-char)
+        #`",|e|,(next-token-of (pa$ char-set-contains? #[-+0-9]))")
+      #f))
+  (let* ([sign (sign)] [int (int)] [frac (frac)] [expo (exponent)])
+    (list sign int frac expo)))
 
 (define (scan-literal)
   (let loop ([c (peek-char)]
@@ -311,25 +300,21 @@
     [else (error "unexpected literal" value)]))
 
 (define (parse-number parts)
-  (define (sign->number s)
-    (or (and s (string=? s "-") -1) 1))
   (define (exponent sign int frac expo)
     (rxmatch-let (#/[eE]([-+])?(\d+)/ expo)
       (#f exp-sign factor)
-      (* sign (* (exact->inexact (+ int frac))
-                 (expt 10 (* (sign->number exp-sign)
-                             (string->number factor)))))))
-  (let1 sign (sign->number (car parts))
-    (match (cdr parts)
-      [(int #f #f)
-       (* sign (string->number int))]
-      [(int frac #f)
-       (* sign (+ (string->number int) (string->number #`"0,frac")))]
-      [(int #f expo)
-       (exponent sign (string->number int) 0 expo)]
-      [(int frac expo)
-       (exponent sign (string->number int) (string->number #`"0,frac") expo)]
-      )))
+      (let1 exp-sign (or (and exp-sign (string=? exp-sign "-") -1) 1)
+        (* sign (* (exact->inexact (+ int frac))
+                   (expt 10 (* exp-sign (string->number factor))))))))
+  (match parts
+    [(sign int #f #f)
+     (* sign (string->number int))]
+    [(sign int frac #f)
+     (* sign (+ (string->number int) (string->number #`"0,frac")))]
+    [(sign int #f expo)
+     (exponent sign (string->number int) 0 expo)]
+    [(sign int frac expo)
+     (exponent sign (string->number int) (string->number #`"0,frac") expo)]))
 
 
 ;; ---------------------------------------------------------
