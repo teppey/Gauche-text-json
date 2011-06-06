@@ -241,7 +241,6 @@
       [(literal) (parse-literal (token-value token))]
       [else      (error "invalid JSON syntax")])))
 
-;; TODO: check trailing comma
 (define (parse-object dict scanner)
   (let loop ([token (scanner)])
     (case (token-type token)
@@ -257,7 +256,6 @@
       [else (error "invalid JSON object syntax" token)]
       )))
 
-;; TODO: check trailing comma
 (define (parse-array class size scanner)
   (with-builder (class add! get :size size)
     (let loop ([token (scanner)])
