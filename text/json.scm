@@ -275,15 +275,15 @@
   (with-string-io value
     (lambda ()
       (until (read-char) eof-object? => c
-        (if (not (eqv? c #\\))
+        (if (not (char=? c #\\))
           (display c)
           (let1 cc (read-char)
-            (cond [(eqv? cc #\u) (display (parse-unicode-char))]
-                  [(eqv? cc #\b) (display #\x08)]
-                  [(eqv? cc #\f) (display #\page)]
-                  [(eqv? cc #\n) (display #\newline)]
-                  [(eqv? cc #\r) (display #\return)]
-                  [(eqv? cc #\t) (display #\tab)]
+            (cond [(char=? cc #\u) (display (parse-unicode-char))]
+                  [(char=? cc #\b) (display #\x08)]
+                  [(char=? cc #\f) (display #\page)]
+                  [(char=? cc #\n) (display #\newline)]
+                  [(char=? cc #\r) (display #\return)]
+                  [(char=? cc #\t) (display #\tab)]
                   [else (display cc)])))))))
 
 (define (parse-unicode-char)
