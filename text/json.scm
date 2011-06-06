@@ -274,24 +274,17 @@
 (define (parse-string value)
   (with-string-io value
     (lambda ()
-      (let loop ([c (read-char)] [chars '()])
-        (cond
-          [(eof-object? c)
-           (display (list->string (reverse! chars)))]
-          [(not (eqv? c #\\))
-           (loop (read-char) (cons c chars))]
-          [else
-           (let1 cc (read-char)
-             (cond
-               [(eqv? cc #\u)
-                (let1 uc (parse-unicode-char)
-                  (loop (read-char) (cons uc chars)))]
-               [(eqv? cc #\b) (loop (read-char) (cons #\x08 chars))]
-               [(eqv? cc #\f) (loop (read-char) (cons #\page chars))]
-               [(eqv? cc #\n) (loop (read-char) (cons #\newline chars))]
-               [(eqv? cc #\r) (loop (read-char) (cons #\return chars))]
-               [(eqv? cc #\t) (loop (read-char) (cons #\tab chars))]
-               [else (loop (read-char) (cons cc chars))]))])))))
+      (until (read-char) eof-object? => c
+        (if (not (eqv? c #\\))
+          (display c)
+          (let1 cc (read-char)
+            (cond [(eqv? cc #\u) (display (parse-unicode-char))]
+                  [(eqv? cc #\b) (display #\x08)]
+                  [(eqv? cc #\f) (display #\page)]
+                  [(eqv? cc #\n) (display #\newline)]
+                  [(eqv? cc #\r) (display #\return)]
+                  [(eqv? cc #\t) (display #\tab)]
+                  [else (display cc)])))))))
 
 (define (parse-unicode-char)
   (let ([chars '()])
