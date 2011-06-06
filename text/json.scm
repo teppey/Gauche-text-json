@@ -198,9 +198,8 @@
       token
       (error "unexpected token:" (token-value token)))))
 
-(define (parse-json input)
-  (let* ((scanner (make-scanner input))
-         (token (%assert-token scanner '(begin-object begin-array))))
+(define (parse-json scanner)
+  (let1 token (%assert-token scanner '(begin-object begin-array))
     (unget-token! scanner token)
     (rlet1 json (parse-any scanner)
       (%assert-token scanner '(eof)))))
@@ -423,9 +422,9 @@
 
 (define (json-read :optional (input (current-input-port)))
   (cond [(string? input)
-         (call-with-input-string input parse-json)]
+         (call-with-input-string input (.$ parse-json make-scanner))]
         [(input-port? input)
-         (parse-json input)]
+         (parse-json (make-scanner input))]
         [else
           (error "input port or string required, but got" input)]))
 
