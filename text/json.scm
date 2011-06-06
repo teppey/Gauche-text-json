@@ -107,14 +107,13 @@
 ;; ---------------------------------------------------------
 ;; Scanner
 ;;
-
 (define (make-token type value) (vector type value))
 (define (token-type token) (vector-ref token 0))
 (define (token-value token) (vector-ref token 1))
-(define (unget-token! scanner token)
-  (scanner token))
+(define (unget-token! scanner token) (scanner token))
 
 (define (make-scanner iport)
+  (define *token-buffer* #f)
   (define *white-space-chars* #[\x20\x09\x0a\x0d])
   (define *struct-chars-table*
     (hash-table 'eqv?
@@ -124,43 +123,39 @@
       '(#\} . end-object)
       '(#\: . name-separator)
       '(#\, . value-separator)))
+  (define (struct-char? c)
+    (hash-table-get *struct-chars-table* c #f))
   (define (scan)
-    (define (struct-char? c)
-      (hash-table-get *struct-chars-table* c #f))
     (skip-while *white-space-chars*)
     (let1 c (peek-char)
       (cond [(eof-object? c)
-             (values (read-char) #f)]
+             (make-token 'eof (read-char))]
             [(char=? c #\")
-             (get-string-token)]
+             (make-token 'string (scan-string))]
             [(char-set-contains? #[-+0-9] c)
-             (get-number-token)]
+             (make-token 'number (scan-number))]
             [(char-set-contains? #[tfn] c)
-             (get-literal-token)]
+             (make-token 'literal (scan-literal))]
             [(struct-char? c)
-             => (^(type)
-                  (read-char)
-                  (values type #f))]
+             => (cut make-token <> (read-char))]
             [else
               (error "invalid JSON form")])))
-  (define *token-buffer* #f)
+
   (case-lambda
     [() (if *token-buffer*
           (begin0 *token-buffer*
             (set! *token-buffer* #f))
-          (receive (type value)
-            (with-input-from-port iport scan)
-            (make-token type value)))]
+          (with-input-from-port iport scan))]
     [(token) (set! *token-buffer* token)]))
 
-(define (get-string-token)
+(define (scan-string)
   (read-char)
   (let loop ([c (read-char)]
              [out (open-output-string)])
     (cond [(eof-object? c)
            (error "unexpected EOF at" (get-output-string out))]
           [(char=? c #\")
-           (values 'string (get-output-string out))]
+           (get-output-string out)]
           [(char=? c #\\)
            (write-char c out)
            (write-char (read-char) out)
@@ -169,7 +164,7 @@
             (write-char c out)
             (loop (read-char) out)])))
 
-(define (get-number-token)
+(define (scan-number)
   (let ([sign (open-output-string)]
         [int  (open-output-string)]
         [frac (open-output-string)]
@@ -197,18 +192,17 @@
           (write-char (read-char) expo)
           (loop (peek-char)))))
 
-    (values 'number (map (^(out)
-                           (let1 s (get-output-string out)
-                             (if (string-null? s) #f s)))
-                         (list sign int frac expo)))))
+    (map (^(out) (let1 s (get-output-string out)
+                   (and (not (string-null? s)) s)))
+         (list sign int frac expo))))
 
-(define (get-literal-token)
+(define (scan-literal)
   (let loop ([c (peek-char)]
              [out (open-output-string)])
     (if (and (char? c) (char-set-contains? #[a-z] c))
       (begin (write-char (read-char) out)
              (loop (peek-char) out))
-      (values 'literal (get-output-string out)))))
+      (get-output-string out))))
 
 
 ;; ---------------------------------------------------------
