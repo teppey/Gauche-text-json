@@ -10,7 +10,7 @@
   (use gauche.parameter :only (make-parameter parameterize))
   (use gauche.sequence)
   (use srfi-13 :only (string-null? string-for-each))
-  (use text.parse :only (skip-while))
+  (use text.parse :only (skip-while assert-curr-char))
   (use util.match :only (match match-lambda))
   (export json-object
           json-array
@@ -287,27 +287,21 @@
                   [else (display cc)])))))))
 
 (define (parse-unicode-char)
-  (let ([chars '()])
-    (dotimes (_ 4)
-      (push! chars (read-char)))
-    (let ([n (string->number (list->string (reverse! chars)) 16)])
-      (cond [(not n)
-             (error "invalid unicode form")]
-            [(<= #xD800 n #xDBFF)
-             (surrogate-pair n)]
-            [else
-              (ucs->char n)]))))
-
-(define (surrogate-pair hi)
-  (read-char)  ; skip `\'
-  (read-char)  ; skip `u'
-  (let1 chars '()
-    (dotimes (_ 4)
-      (push! chars (read-char)))
-    (let ([low (string->number (list->string (reverse! chars)) 16)])
-      (unless (or low (<= #xDC00 low #xDFFF))
-        (error "invalide unicode surrogate pair"))
-      (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF))))))
+  (define (escaped->number)
+    (let1 hex4 (with-output-to-string
+                (lambda ()
+                  (dotimes (_ 4)
+                    (display (assert-curr-char #[0-9a-fA-F] "unexpected char")))))
+      (string->number hex4 16)))
+  (define (surrogate-pair hi)
+    (assert-curr-char #\\ "unexpected char")
+    (assert-curr-char #\u "unexpected char")
+    (let1 low (escaped->number)
+      (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF)))))
+  (let1 n (escaped->number)
+    (if (<= #xD800 n #xDBFF)
+      (surrogate-pair n)
+      (ucs->char n))))
 
 (define (parse-literal value)
   (case (string->symbol value)
