@@ -51,6 +51,29 @@
 (test* "symbol true -> literal" "[true]" (json-write #(true) #f))
 (test* "symbol false -> literal" "[false]" (json-write #(false) #f))
 
+;; Inalid syntax
+(test* "scalar" (test-error) (json-read "1"))
+(test* "scalar" (test-error) (json-read "\"foo\""))
+(test* "scalar" (test-error) (json-read "true"))
+(test* "scalar" (test-error) (json-read "false"))
+(test* "scalar" (test-error) (json-read "null"))
+(test* "unexpected literal" (test-error) (json-read "foo"))
+(test* "unexpected literal" (test-error) (json-read "[foo]"))
+(test* "trailing comma1" (test-error) (json-read "[,]"))
+(test* "trailing comma2" (test-error) (json-read "[1,]"))
+(test* "trailing comma3" (test-error) (json-read "{,}"))
+(test* "trailing comma4" (test-error) (json-read "{\"foo\":1,}"))
+(test* "leading comma1" (test-error) (json-read "[,1]"))
+(test* "leading comma2" (test-error) (json-read "{,\"foo\":1}"))
+(test* "bad object form1" (test-error) (json-read "{\"foo\"}"))
+(test* "bad object form2" (test-error) (json-read "{\"foo\",}"))
+(test* "bad object form3" (test-error) (json-read "{\"foo\":,}"))
+(test* "bad object form4" (test-error) (json-read "{:,}"))
+(test* "bad object form5" (test-error) (json-read "{:1,}"))
+(test* "bad object form6" (test-error) (json-read "{foo:1}"))
+(test* "no comma" (test-error) (json-read "[1 2]"))
+(test* "no comma" (test-error) (json-read "{\"foo\":1 \"bar\":2}"))
+
 ;;; The following code from Gauche-trunk/ext/peg/test.scm
 
 (test* "write object" "{\"foo\":1,\"bar\":2}" (json-write '(("foo" . 1) ("bar" . 2)) #f))
@@ -59,6 +82,8 @@
 
 (test* "read empty object" '() (json-read "{}"))
 (test* "write empty object" "{}" (json-write (json-read "{}") #f))
+(test* "read empty array" #() (json-read "[]"))
+(test* "write empty object" "{}" (json-write '() #f))
 
 (define (test-primitive str val)
   (test* "primitive" `(("x" . ,val)) (json-read str)))
