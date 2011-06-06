@@ -208,15 +208,11 @@
 ;; ---------------------------------------------------------
 ;; Parser
 ;;
-(define-syntax %assert-token
-  (syntax-rules ()
-    [(_ scanner (expected ...))
-     (%assert-token scanner (expected ...) memq)]
-    [(_ scanner (expected ...) cmpfn)
-     (let1 token (scanner)
-       (if (cmpfn (token-type token) (expected ...))
-         token
-         (error "unexpected token:" (token-value token))))]))
+(define (%assert-token scanner expected :optional (cmpfn memq))
+  (let1 token (scanner)
+    (if (cmpfn (token-type token) expected)
+      token
+      (error "unexpected token:" (token-value token)))))
 
 (define (parse-json input)
   (let* ((scanner (make-scanner input))
@@ -282,24 +278,20 @@
         (cond
           [(eof-object? c)
            (display (list->string (reverse! chars)))]
-          [(char=? c #\\)
-           (let ([cc (read-char)])
+          [(not (eqv? c #\\))
+           (loop (read-char) (cons c chars))]
+          [else
+           (let1 cc (read-char)
              (cond
-               [(char=? cc #\u)
+               [(eqv? cc #\u)
                 (let1 uc (parse-unicode-char)
                   (loop (read-char) (cons uc chars)))]
-               [(char=? cc #\") (loop (read-char) (cons cc chars))]
-               [(char=? cc #\\) (loop (read-char) (cons cc chars))]
-               [(char=? cc #\/) (loop (read-char) (cons cc chars))]
-               [(char=? cc #\b) (loop (read-char) (cons #\x08 chars))]
-               [(char=? cc #\f) (loop (read-char) (cons #\page chars))]
-               [(char=? cc #\n)
-                (loop (read-char) (cons #\newline chars))]
-               [(char=? cc #\r)
-                (loop (read-char) (cons #\return chars))]
-               [(char=? cc #\t) (loop (read-char) (cons #\tab chars))]
-               [else (loop (read-char) (cons cc chars))]))]
-          [else (loop (read-char) (cons c chars))])))))
+               [(eqv? cc #\b) (loop (read-char) (cons #\x08 chars))]
+               [(eqv? cc #\f) (loop (read-char) (cons #\page chars))]
+               [(eqv? cc #\n) (loop (read-char) (cons #\newline chars))]
+               [(eqv? cc #\r) (loop (read-char) (cons #\return chars))]
+               [(eqv? cc #\t) (loop (read-char) (cons #\tab chars))]
+               [else (loop (read-char) (cons cc chars))]))])))))
 
 (define (parse-unicode-char)
   (let ([chars '()])
