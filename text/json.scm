@@ -149,20 +149,20 @@
     [(token) (set! *token-buffer* token)]))
 
 (define (scan-string)
-  (read-char)
-  (let loop ([c (read-char)]
-             [out (open-output-string)])
-    (cond [(eof-object? c)
-           (error "unexpected EOF at" (get-output-string out))]
-          [(char=? c #\")
-           (get-output-string out)]
-          [(char=? c #\\)
-           (write-char c out)
-           (write-char (read-char) out)
-           (loop (read-char) out)]
-          [else
-            (write-char c out)
-            (loop (read-char) out)])))
+  (read-char)  ; skip '"'
+  (with-output-to-string
+    (lambda ()
+      (let loop ([c (read-char)])
+        (cond [(eof-object? c)
+               (error "unexpected EOF")]
+              [(char=? c #\")]
+              [(char=? c #\\)
+               (write-char c)
+               (write-char (read-char))
+               (loop (read-char))]
+              [else
+                (write-char c)
+                (loop (read-char))])))))
 
 (define (scan-number)
   (let ([sign (open-output-string)]

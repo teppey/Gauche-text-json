@@ -74,8 +74,6 @@
 (test* "no comma" (test-error) (json-read "[1 2]"))
 (test* "no comma" (test-error) (json-read "{\"foo\":1 \"bar\":2}"))
 
-;;; The following code from Gauche-trunk/ext/peg/test.scm
-
 (test* "write object" "{\"foo\":1,\"bar\":2}" (json-write '(("foo" . 1) ("bar" . 2)) #f))
 
 (test* "write boolean" "[true]" (json-write #(#t) #f))
@@ -85,6 +83,7 @@
 (test* "read empty array" #() (json-read "[]"))
 (test* "write empty object" "{}" (json-write '() #f))
 
+;;; The following code from Gauche-trunk/ext/peg/test.scm
 (define (test-primitive str val)
   (test* "primitive" `(("x" . ,val)) (json-read str)))
 
