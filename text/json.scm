@@ -247,20 +247,19 @@
 (define (parse-object dict scanner)
   (let/cc break
     (while #t
-      (let1 t (%assert-token scanner '(string end-object))
-        (if (eq? (token-type t) 'end-object)
+      (let1 token (%assert-token scanner '(string end-object))
+        (if (eq? (token-type token) 'end-object)
           (break (unwrap dict))
-          (let1 key (parse-string (token-value t))
+          (let1 key (parse-string (token-value token))
             (%assert-token scanner '(name-separator))
             (let1 value (parse-any scanner)
               (dict-put! dict key value)
-              (let1 t (%assert-token scanner '(value-separator end-object))
-                (case (token-type t)
-                  [(end-object)
-                   (unget-token! scanner t)]
+              (let1 token (%assert-token scanner '(value-separator end-object))
+                (case (token-type token)
+                  [(end-object) (break (unwrap dict))]
                   [(value-separator)
-                   (let1 t (%assert-token scanner '(string))
-                     (unget-token! scanner t))])))))))))
+                   (let1 token (%assert-token scanner '(string))
+                     (unget-token! scanner token))])))))))))
 
 (define (parse-array class size scanner)
   (with-builder (class add! get :size size)
