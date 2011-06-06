@@ -208,15 +208,20 @@
 ;; ---------------------------------------------------------
 ;; Parser
 ;;
+(define-syntax %assert-token
+  (syntax-rules ()
+    [(_ scanner (expected ...))
+     (let1 token (scanner)
+       (if (memq (token-type token) (expected ...))
+         token
+         (error "unexpected token:" (token-value token))))]))
+
 (define (parse-json input)
-  (let* ([scanner (make-scanner input)]
-         [token (scanner)])
-    (or (and-let* ([ (memq (token-type token) '(begin-object begin-array)) ]
-                   [ (unget-token! scanner token) ]
-                   [json (parse-any scanner)]
-                   [ (eq? (token-type (scanner)) 'eof) ])
-          json)
-        (error "Invalid JSON syntax"))))
+  (let* ((scanner (make-scanner input))
+         (token (%assert-token scanner '(begin-object begin-array))))
+    (unget-token! scanner token)
+    (rlet1 json (parse-any scanner)
+      (%assert-token scanner '(eof)))))
 
 (define (parse-any scanner)
   (let1 token (scanner)
@@ -235,22 +240,25 @@
       [(string)  (parse-string (token-value token))]
       [(number)  (parse-number (token-value token))]
       [(literal) (parse-literal (token-value token))]
-      [else      (error "invalid JSON syntax")])))
+      [else      (error "unexpected token:" (token-value token))])))
 
 (define (parse-object dict scanner)
-  (let loop ([token (scanner)])
-    (case (token-type token)
-      [(end-object) (unwrap dict)]
-      [(value-separator) (loop (scanner))]
-      [(string)
-       (let ([sep (scanner)])
-         (unless (eq? (token-type sep) 'name-separator)
-           (error "invalid JSON object syntax"))
-         (let ([key (parse-string (token-value token))])
-           (dict-put! dict key (parse-any scanner))
-           (loop (scanner))))]
-      [else (error "invalid JSON object syntax" token)]
-      )))
+  (let/cc break
+    (while #t
+      (let1 t (%assert-token scanner '(string end-object))
+        (if (eq? (token-type t) 'end-object)
+          (break (unwrap dict))
+          (let1 key (parse-string (token-value t))
+            (%assert-token scanner '(name-separator))
+            (let1 value (parse-any scanner)
+              (dict-put! dict key value)
+              (let1 t (%assert-token scanner '(value-separator end-object))
+                (case (token-type t)
+                  [(end-object)
+                   (unget-token! scanner t)]
+                  [(value-separator)
+                   (let1 t (%assert-token scanner '(string))
+                     (unget-token! scanner t))])))))))))
 
 (define (parse-array class size scanner)
   (with-builder (class add! get :size size)
