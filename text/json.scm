@@ -211,8 +211,10 @@
 (define-syntax %assert-token
   (syntax-rules ()
     [(_ scanner (expected ...))
+     (%assert-token scanner (expected ...) memq)]
+    [(_ scanner (expected ...) cmpfn)
      (let1 token (scanner)
-       (if (memq (token-type token) (expected ...))
+       (if (cmpfn (token-type token) (expected ...))
          token
          (error "unexpected token:" (token-value token))))]))
 
@@ -263,12 +265,16 @@
 (define (parse-array class size scanner)
   (with-builder (class add! get :size size)
     (let loop ([token (scanner)])
-      (case (token-type token)
-        [(end-array) (get)]
-        [(value-separator) (loop (scanner))]
-        [else (unget-token! scanner token)
-              (add! (parse-any scanner))
-              (loop (scanner))]))))
+      (if (eq? (token-type token) 'end-array)
+        (get)
+        (begin
+          (unget-token! scanner token)
+          (add! (parse-any scanner))
+          (let1 token (%assert-token scanner '(value-separator end-array))
+            (if (eq? (token-type token) 'value-separator)
+              (loop (%assert-token scanner
+                                   '(string number literal begin-object begin-array)))
+              (loop token))))))))
 
 (define (parse-string value)
   (with-string-io value
