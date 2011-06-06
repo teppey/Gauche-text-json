@@ -211,10 +211,12 @@
 (define (parse-json input)
   (let* ([scanner (make-scanner input)]
          [token (scanner)])
-    (if (memq (token-type token) '(begin-object begin-array))
-      (begin (unget-token! scanner token)
-             (parse-any scanner))
-      (error "Invalid JSON syntax"))))
+    (or (and-let* ([ (memq (token-type token) '(begin-object begin-array)) ]
+                   [ (unget-token! scanner token) ]
+                   [json (parse-any scanner)]
+                   [ (eq? (token-type (scanner)) 'eof) ])
+          json)
+        (error "Invalid JSON syntax"))))
 
 (define (parse-any scanner)
   (let1 token (scanner)
