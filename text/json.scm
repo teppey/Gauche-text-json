@@ -455,26 +455,24 @@
 ;;
 (define-constant json-mime-type "application/json")
 
-(define (json-read . input)
-  (let1 input (get-optional input (current-input-port))
-    (cond [(string? input)
-           (call-with-input-string input parse-json)]
-          [(input-port? input)
-           (parse-json input)]
-          [else
-            (error "input port or string required, but got" input)])))
+(define (json-read :optional (input (current-input-port)))
+  (cond [(string? input)
+         (call-with-input-string input parse-json)]
+        [(input-port? input)
+         (parse-json input)]
+        [else
+          (error "input port or string required, but got" input)]))
 
-(define (json-write obj . output)
-  (let1 output (get-optional output (current-output-port))
-    (cond [(not output)
-           (with-output-to-string (pa$ format-json obj))]
-          [(output-port? output)
-           (with-output-to-port output (pa$ format-json obj))]
-          [else
-            (error "output port required, but got" output)])))
+(define (json-write obj :optional (output (current-output-port)))
+  (cond [(not output)
+         (with-output-to-string (pa$ format-json obj))]
+        [(output-port? output)
+         (with-output-to-port output (pa$ format-json obj))]
+        [else
+          (error "output port required, but got" output)]))
 
-(define (json-write* obj . output)
+(define (json-write* obj :optional (output (current-output-port)))
   (parameterize ([%json-pretty-print? #t])
-    (apply json-write obj output)))
+    (json-write obj output)))
 
 (provide "text/json")
