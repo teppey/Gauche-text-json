@@ -386,7 +386,7 @@
     (display (symbol->string (car r)))
     (error "unexpected symbol" obj)))
 
-(define-method format-object ([obj <dictionary>])
+(define (format-object obj)
   (display #\{)
   (with-indent
     (dict-fold obj
@@ -402,7 +402,7 @@
   (newline-and-indent)
   (display #\}))
 
-(define-method format-array ([obj <sequence>])
+(define (format-array obj)
   (display #\[)
   (with-indent
     (fold (^(value comma)
