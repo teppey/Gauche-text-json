@@ -314,17 +314,14 @@
 ;; ---------------------------------------------------------
 ;; Writer
 ;;
-(define-syntax display-if-pretty
-  (syntax-rules ()
-    [(_ x) (when (%json-pretty-print?) (display x))]))
+(define (display-if-pretty arg)
+  (when (%json-pretty-print?) (display arg)))
 
-(define-syntax newline-and-indent
-  (syntax-rules ()
-    [(_) (begin
-           (display-if-pretty #\newline)
-           (display-if-pretty
-             (make-string
-               (* (%json-indent-level) (json-indent-width)) #\space)))]))
+(define (newline-and-indent)
+  (display-if-pretty #\newline)
+  (display-if-pretty
+    (make-string
+      (* (%json-indent-level) (json-indent-width)) #\space)))
 
 (define-syntax with-indent
   (syntax-rules ()
