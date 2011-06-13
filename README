@@ -3,13 +3,13 @@ Notation''.
 
 Requirements:
 
-    Gauche 0.9 or later
+    Gauche 0.9.1 or later
 
 Install:
 
     From tarball
 
-        $ gauche-package install [-S root] Gauche-text-json-0.1.tgz
+        $ gauche-package install [-S root] Gauche-text-json-0.2.tgz
 
     From source
 
@@ -37,7 +37,7 @@ Constant: json-mime-type
     "application/json", that is the MIME type of JSON.
 
 
-Function: json-read &optional input
+Function: json-read :optional input
 
     This function takes input from current input port is assumed to be JSON
     and the parse and the result are returned. Argument `input' that can be
@@ -56,7 +56,7 @@ Function: json-read &optional input
             null     |   null (symbol)
 
 
-Function: json-write obj &optional output
+Function: json-write obj :optional output
 
     `obj' is written to a current output port as JSON string. Optional
     argument `output' is output port or #f. If `output' is output port, the
