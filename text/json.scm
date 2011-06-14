@@ -12,9 +12,9 @@
   (use srfi-13 :only (string-null? string-for-each))
   (use text.parse :only (skip-while assert-curr-char next-token-of))
   (use util.match :only (match match-lambda))
-  (export json-object
-          json-array
-          json-object-from-alist?
+  (export json-object-fn
+          json-array-fn
+          list-as-json-array
           json-mime-type
           json-read
           json-write
@@ -26,21 +26,21 @@
 ;; ---------------------------------------------------------
 ;; Reader Parameters
 ;;
-;;  json-object
+;;  json-object-fn
 ;;    Thunk must be returns instance of <dictionary>
 ;;    subclass.  When this parameter value is #f, JSON
 ;;    object to be alist.
-(define json-object
+(define json-object-fn
   (make-parameter #f
     (match-lambda
       [#f #f]
       [(? procedure? thunk) thunk]
       [badarg (error "procedure or #f required, but got" badarg)])))
 
-;;  json-array
+;;  json-array-fn
 ;;    Thunk must be returns two values, <sequence> subclass
 ;;    and size for call-with-builder.  Size may be a #f.
-(define json-array
+(define json-array-fn
   (make-parameter #f
     (match-lambda
       [#f #f]
@@ -50,7 +50,7 @@
 ;; ---------------------------------------------------------
 ;; Writer Parameters
 ;;
-(define json-object-from-alist? (make-parameter #t))
+(define list-as-json-array (make-parameter #f))
 (define %json-pretty-print? (make-parameter #f))
 (define %json-indent-level  (make-parameter 0))
 (define json-indent-width
@@ -208,13 +208,13 @@
   (let1 token (scanner)
     (case (token-type token)
       [(begin-object)
-       (let1 dict (if-let1 thunk (json-object)
+       (let1 dict (if-let1 thunk (json-object-fn)
                     (thunk)
                     (make <alist>))
          (parse-object dict scanner))]
       [(begin-array)
        (receive (class size)
-         (if-let1 thunk (json-array)
+         (if-let1 thunk (json-array-fn)
            (thunk)
            (values <vector> #f))
          (parse-array class size scanner))]
@@ -342,7 +342,7 @@
     [(boolean? obj) (format-literal-boolean obj)]
     [(symbol? obj)  (format-literal-symbol obj)]
     [(or (is-a? obj <dictionary>)
-         (and (json-object-from-alist?)
+         (and (not (list-as-json-array))
               (list? obj)))
      (format-object (wrap-alist obj))]
     [(is-a? obj <sequence>) (format-array obj)]

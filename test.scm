@@ -28,15 +28,15 @@
           \"IDs\": [116, 943, 234, 38793]
         }
    }")
-(parameterize ([json-object (cut make-hash-table 'string=?)]
-               [json-array  (cut values <list> #f)])
+(parameterize ([json-object-fn (cut make-hash-table 'string=?)]
+               [json-array-fn  (cut values <list> #f)])
   (let1 o (json-read json-text-sample)
     (test* "hashtable?" #t (is-a? o <hash-table>))
     (test* "hashtable?" #t (is-a? (~ o "Image") <hash-table>))
     (test* "list?" #t (is-a? (~ o "Image" "IDs") <list>))
     (test* "lookup" "100" (~ o "Image" "Thumbnail" "Width"))))
 
-(parameterize ([json-object-from-alist? #f])
+(parameterize ([list-as-json-array #t])
   (test* "hash-table -> object" "{\"foo\":1,\"bar\":2}"
          (json-write (hash-table 'string=? '("foo" . 1) '("bar" . 2)) #f))
   (test* "list -> array" "[1,2,3]" (json-write '(1 2 3) #f))
