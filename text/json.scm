@@ -26,10 +26,12 @@
 ;; ---------------------------------------------------------
 ;; Reader Parameters
 ;;
-;;  json-object-fn
+;;  json-object-fn : thunk | #f
+;;
 ;;    Thunk must be returns instance of <dictionary>
-;;    subclass.  When this parameter value is #f, JSON
+;;    subclass.  If this parameter value is set #f, JSON
 ;;    object to be alist.
+;;
 (define json-object-fn
   (make-parameter #f
     (match-lambda
@@ -37,9 +39,12 @@
       [(? procedure? thunk) thunk]
       [badarg (error "procedure or #f required, but got" badarg)])))
 
-;;  json-array-fn
+;;
+;;  json-array-fn : thunk | #f
+;;
 ;;    Thunk must be returns two values, <sequence> subclass
-;;    and size for call-with-builder.  Size may be a #f.
+;;    and size of array. Size may be a #f.
+;;
 (define json-array-fn
   (make-parameter #f
     (match-lambda
