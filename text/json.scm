@@ -25,7 +25,7 @@
 
 
 ;; ---------------------------------------------------------
-;; Alist Wrapper Class
+;; Assoc list wrapper class
 ;;
 (define-class <alist> (<dictionary> <collection>)
   ([pairs :init-value '() :init-keyword :pairs]))
