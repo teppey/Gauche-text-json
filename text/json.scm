@@ -357,7 +357,7 @@
 
 ;; from rfc.json
 (define (format-number obj)
-  (cond [(not (real? obj))
+  (cond [(or (not (real? obj)) (not (finite? obj)))
          (error <json-write-error> "real number expected, but got" obj)]
         [(and (rational? obj) (not (integer? obj)))
          (display (exact->inexact obj))]
