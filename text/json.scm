@@ -12,7 +12,9 @@
   (use srfi-13 :only (string-null? string-for-each))
   (use text.parse :only (skip-while next-token-of))
   (use util.match)
-  (export json-mime-type
+  (export <json-read-error>
+          <json-write-error>
+          json-mime-type
           json-object-fn
           json-array-fn
           list-as-json-array
