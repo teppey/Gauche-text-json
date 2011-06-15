@@ -194,9 +194,9 @@
            (thunk)
            (values <vector> #f))
          (parse-array class size scanner))]
-      [(string)  (parse-string (token-value token))]
-      [(number)  (parse-number (token-value token))]
-      [(literal) (parse-literal (token-value token))]
+      [(string)  (parse-string token scanner)]
+      [(number)  (parse-number token scanner)]
+      [(literal) (parse-literal token scanner)]
       [else      (%unexpected-token token scanner)])))
 
 (define (parse-object dict scanner)
@@ -205,7 +205,7 @@
       (let1 token (%assert-token scanner '(string end-object))
         (if (eq? (token-type token) 'end-object)
           (break (unwrap dict))
-          (let1 key (parse-string (token-value token))
+          (let1 key (parse-string token scanner)
             (%assert-token scanner '(name-separator))
             (let1 value (parse-any scanner)
               (dict-put! dict key value)
@@ -230,8 +230,8 @@
                                    '(string number literal begin-object begin-array)))
               (loop token))))))))
 
-(define (parse-string value)
-  (with-string-io value
+(define (parse-string token scanner)
+  (with-string-io (token-value token)
     (lambda ()
       (until (read-char) eof-object? => c
         (if (not (char=? c #\\))
@@ -262,21 +262,21 @@
       (surrogate-pair n)
       (ucs->char n))))
 
-(define (parse-literal value)
-  (case (string->symbol value)
+(define (parse-literal token scanner)
+  (case (string->symbol (token-value token))
     [(true)  #t]
     [(false) #f]
     [(null)  'null]
-    [else (error "unexpected literal" value)]))
+    [else => (cut errorf "unexpected literal: ~s at ~a" <> (position scanner))]))
 
-(define (parse-number parts)
+(define (parse-number token scanner)
   (define (exponent sign int frac expo)
     (rxmatch-let (#/[eE]([-+])?(\d+)/ expo)
       (#f exp-sign factor)
       (let1 exp-sign (or (and exp-sign (string=? exp-sign "-") -1) 1)
         (* sign (* (exact->inexact (+ int frac))
                    (expt 10 (* exp-sign (string->number factor))))))))
-  (match parts
+  (match (token-value token)
     [(sign int #f #f)
      (* sign (string->number int))]
     [(sign int frac #f)
