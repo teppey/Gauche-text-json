@@ -338,7 +338,9 @@
   (if (and (is-a? obj <collection>)
            (not (string? obj)))
     (format-any obj)
-    (error "expect insntance of <collection> except <string>, bug got" obj)))
+    (error <json-write-error>
+           "expect <collection> instance except <string>, bug got"
+           obj)))
 
 (define (format-any obj)
   (cond
@@ -351,12 +353,12 @@
               (list? obj)))
      (format-object (wrap-alist obj))]
     [(is-a? obj <sequence>) (format-array obj)]
-    [else (error "unexpected object" obj)]))
+    [else (error <json-write-error> "unexpected object" obj)]))
 
 ;; from rfc.json
 (define (format-number obj)
   (cond [(not (real? obj))
-         (error "real number expected, but got" obj)]
+         (error <json-write-error> "real number expected, but got" obj)]
         [(and (rational? obj) (not (integer? obj)))
          (display (exact->inexact obj))]
         [else (display obj)]))
@@ -386,7 +388,7 @@
 (define (format-literal-symbol obj)
   (if-let1 r (memq obj '(null true false))
     (display (symbol->string (car r)))
-    (error "unexpected symbol" obj)))
+    (error <json-write-error> "unexpected symbol" obj)))
 
 (define (format-object obj)
   (display #\{)
@@ -435,7 +437,6 @@
                        [(? procedure? thunk) thunk]
                        [badarg (error "procedure or #f required, but got" badarg)])))
 
-
 ;; Reader Parameter: json-array-fn
 ;;
 ;;   Parameter value is thunk or #f. Thunk must be returns two values;
@@ -447,13 +448,11 @@
                        [(? procedure? thunk) thunk]
                        [badarg (error "procedure or #f required, but got" badarg)])))
 
-
 ;; Writer Parameter: list-as-json-array
 ;;
 ;;   If a true value is given, list was formatted to JSON array. Otherwise,
 ;;   writer regard list as alist, it format to JSON object.
 (define list-as-json-array (make-parameter #f))
-
 
 ;; Writer Parameter: json-indent-width
 ;;
@@ -463,7 +462,6 @@
   (make-parameter 2
     (^n (or (and (integer? n) (>= n 0) (x->integer n))
             (error "required positive integer or zero, but got" n)))))
-
 
 (define (json-read :optional (input (current-input-port)))
   (cond [(string? input)
