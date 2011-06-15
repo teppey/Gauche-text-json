@@ -155,82 +155,86 @@
     [('position) (position)]
     [badmsg (error "make-scanner -- unknown message:" badmsg)]))
 
-(define (get-token scanner) (scanner 'get))
-(define (unget-token! scanner token) (scanner 'put! token))
-(define (position scanner) (scanner 'position))
 
 
 ;; ---------------------------------------------------------
 ;; Parser
 ;;
-(define (%unexpected-token t scanner)
-  (errorf "unexpected token: ~s at ~a"
-          (if (token? t) (token-value t) t)
-          (position scanner)))
+(define *scanner* (make-parameter #f))
 
-(define (%assert-token scanner expected :optional (cmpfn memq))
-  (let1 token (get-token scanner)
+(define (%get-token) ((*scanner*) 'get))
+(define (%unget-token! token) ((*scanner*) 'put! token))
+(define (%position) ((*scanner*) 'position))
+
+(define (%unexpected-token token)
+  (errorf "unexpected token: ~s at ~a"
+          (if (token? token) (token-value token) token)
+          (%position)))
+
+(define (%assert-token expected :optional (cmpfn memq))
+  (let1 token (%get-token)
     (if (cmpfn (token-type token) expected)
       token
-      (%unexpected-token token scanner))))
+      (%unexpected-token token))))
 
-(define (parse-json scanner)
-  (let1 token (%assert-token scanner '(begin-object begin-array))
-    (unget-token! scanner token)
-    (rlet1 json (parse-any scanner)
-      (%assert-token scanner '(eof)))))
+;; parse entry point
+(define (parse-json iport)
+  (parameterize ([*scanner* (make-scanner iport)])
+    (let1 token (%assert-token '(begin-object begin-array))
+      (%unget-token! token)
+      (rlet1 json (parse-any)
+        (%assert-token '(eof))))))
 
-(define (parse-any scanner)
-  (let1 token (get-token scanner)
+(define (parse-any)
+  (let1 token (%get-token)
     (case (token-type token)
       [(begin-object)
        (let1 dict (if-let1 thunk (json-object-fn)
                     (thunk)
                     (make <alist>))
-         (parse-object dict scanner))]
+         (parse-object dict))]
       [(begin-array)
        (receive (class size)
          (if-let1 thunk (json-array-fn)
            (thunk)
            (values <vector> #f))
-         (parse-array class size scanner))]
-      [(string)  (parse-string token scanner)]
-      [(number)  (parse-number token scanner)]
-      [(literal) (parse-literal token scanner)]
-      [else      (%unexpected-token token scanner)])))
+         (parse-array class size))]
+      [(string)  (parse-string token)]
+      [(number)  (parse-number token)]
+      [(literal) (parse-literal token)]
+      [else      (%unexpected-token token)])))
 
-(define (parse-object dict scanner)
+(define (parse-object dict)
   (let/cc break
     (while #t
-      (let1 token (%assert-token scanner '(string end-object))
+      (let1 token (%assert-token '(string end-object))
         (if (eq? (token-type token) 'end-object)
           (break (unwrap dict))
-          (let1 key (parse-string token scanner)
-            (%assert-token scanner '(name-separator))
-            (let1 value (parse-any scanner)
+          (let1 key (parse-string token)
+            (%assert-token '(name-separator))
+            (let1 value (parse-any)
               (dict-put! dict key value)
-              (let1 token (%assert-token scanner '(value-separator end-object))
+              (let1 token (%assert-token '(value-separator end-object))
                 (case (token-type token)
                   [(end-object) (break (unwrap dict))]
                   [(value-separator)
-                   (let1 token (%assert-token scanner '(string))
-                     (unget-token! scanner token))])))))))))
+                   (let1 token (%assert-token '(string))
+                     (%unget-token! token))])))))))))
 
-(define (parse-array class size scanner)
+(define (parse-array class size)
   (with-builder (class add! get :size size)
-    (let loop ([token (get-token scanner)])
+    (let loop ([token (%get-token)])
       (if (eq? (token-type token) 'end-array)
         (get)
         (begin
-          (unget-token! scanner token)
-          (add! (parse-any scanner))
-          (let1 token (%assert-token scanner '(value-separator end-array))
+          (%unget-token! token)
+          (add! (parse-any))
+          (let1 token (%assert-token '(value-separator end-array))
             (if (eq? (token-type token) 'value-separator)
-              (loop (%assert-token scanner
-                                   '(string number literal begin-object begin-array)))
+              (loop (%assert-token '(string number literal begin-object begin-array)))
               (loop token))))))))
 
-(define (parse-string token scanner)
+(define (parse-string token)
   (with-string-io (token-value token)
     (lambda ()
       (until (read-char) eof-object? => c
@@ -262,14 +266,14 @@
       (surrogate-pair n)
       (ucs->char n))))
 
-(define (parse-literal token scanner)
+(define (parse-literal token)
   (case (string->symbol (token-value token))
     [(true)  #t]
     [(false) #f]
     [(null)  'null]
-    [else => (cut errorf "unexpected literal: ~s at ~a" <> (position scanner))]))
+    [else => (cut errorf "unexpected literal: ~s at ~a" <> (%position))]))
 
-(define (parse-number token scanner)
+(define (parse-number token)
   (define (exponent sign int frac expo)
     (rxmatch-let (#/[eE]([-+])?(\d+)/ expo)
       (#f exp-sign factor)
@@ -441,9 +445,9 @@
 
 (define (json-read :optional (input (current-input-port)))
   (cond [(string? input)
-         (call-with-input-string input (.$ parse-json make-scanner))]
+         (call-with-input-string input parse-json)]
         [(input-port? input)
-         (parse-json (make-scanner input))]
+         (parse-json input)]
         [else
           (error "input port or string required, but got" input)]))
 
