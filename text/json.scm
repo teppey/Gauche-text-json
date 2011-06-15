@@ -166,7 +166,7 @@
 (define (%unget-token! token) ((*scanner*) 'put! token))
 (define (%position) ((*scanner*) 'position))
 
-(define (%unexpected-token token)
+(define (%raise-unexpected-token token)
   (errorf "unexpected token: ~s at ~a"
           (if (token? token) (token-value token) token)
           (%position)))
@@ -175,7 +175,7 @@
   (let1 token (%get-token)
     (if (cmpfn (token-type token) expected)
       token
-      (%unexpected-token token))))
+      (%raise-unexpected-token token))))
 
 ;; parse entry point
 (define (parse-json iport)
@@ -202,7 +202,7 @@
       [(string)  (parse-string token)]
       [(number)  (parse-number token)]
       [(literal) (parse-literal token)]
-      [else      (%unexpected-token token)])))
+      [else      (%raise-unexpected-token token)])))
 
 (define (parse-object dict)
   (let/cc break
