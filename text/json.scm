@@ -9,7 +9,6 @@
   (use gauche.dictionary)
   (use gauche.parameter :only (make-parameter parameterize))
   (use gauche.sequence)
-  (use srfi-13 :only (string-null? string-for-each))
   (use text.parse :only (skip-while next-token-of))
   (use util.match)
   (export <json-read-error>
@@ -375,11 +374,12 @@
 
 (define (format-string obj)
   (display "\"")
-  (string-for-each
-    (^c (if (char-set-contains? #[\x00-\x7f] c)
+  (with-input-from-string obj
+    (lambda ()
+      (until (read-char) eof-object? => c
+        (if (char-set-contains? #[\x00-\x7f] c)
           (display (hash-table-get *escape-table* c c))
-          (format #t "\\u~4,'0X" (char->ucs c))))
-    obj)
+          (format #t "\\u~4,'0X" (char->ucs c))))))
   (display "\""))
 
 (define (format-literal-boolean obj)
