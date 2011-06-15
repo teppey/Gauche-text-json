@@ -11,7 +11,7 @@
   (use gauche.sequence)
   (use srfi-13 :only (string-null? string-for-each))
   (use text.parse :only (skip-while assert-curr-char next-token-of))
-  (use util.match :only (match match-lambda))
+  (use util.match)
   (export json-mime-type
           json-object-fn
           json-array-fn
@@ -75,19 +75,15 @@
 (define (make-token type value) (vector type value))
 (define (token-type token) (vector-ref token 0))
 (define (token-value token) (vector-ref token 1))
-(define (unget-token! scanner token) (scanner token))
 
 (define (make-scanner iport)
   (define *token-buffer* #f)
   (define *white-space-chars* #[\x20\x09\x0a\x0d])
   (define *struct-chars-table*
     (hash-table 'eqv?
-      '(#\[ . begin-array )
-      '(#\] . end-array)
-      '(#\{ . begin-object)
-      '(#\} . end-object)
-      '(#\: . name-separator)
-      '(#\, . value-separator)))
+      '(#\[ . begin-array ) '(#\] . end-array)
+      '(#\{ . begin-object) '(#\} . end-object)
+      '(#\: . name-separator) '(#\, . value-separator)))
   (define (struct-char? c)
     (hash-table-get *struct-chars-table* c #f))
   (define (scan)
@@ -105,13 +101,25 @@
              => (cut make-token <> (read-char))]
             [else
               (error "invalid JSON form")])))
+  (define (get)
+    (if *token-buffer*
+      (begin0 *token-buffer*
+        (set! *token-buffer* #f))
+      (with-input-from-port iport scan)))
+  (define (put! token)
+    (set! *token-buffer* token))
+  (define (position)
+    #f
+    )
+  (match-lambda*
+    [('get) (get)]
+    [('put! token) (put! token)]
+    [('position) (position)]
+    [badmsg (error "make-scanner -- unknown message:" badmsg)]))
 
-  (case-lambda
-    [() (if *token-buffer*
-          (begin0 *token-buffer*
-            (set! *token-buffer* #f))
-          (with-input-from-port iport scan))]
-    [(token) (set! *token-buffer* token)]))
+(define (get-token scanner) (scanner 'get))
+(define (unget-token! scanner token) (scanner 'put! token))
+(define (position scanner) (scanner 'position))
 
 (define (scan-string)
   (read-char)  ; skip '"'
@@ -158,7 +166,7 @@
 ;; Parser
 ;;
 (define (%assert-token scanner expected :optional (cmpfn memq))
-  (let1 token (scanner)
+  (let1 token (get-token scanner)
     (if (cmpfn (token-type token) expected)
       token
       (error "unexpected token:" (token-value token)))))
@@ -170,7 +178,7 @@
       (%assert-token scanner '(eof)))))
 
 (define (parse-any scanner)
-  (let1 token (scanner)
+  (let1 token (get-token scanner)
     (case (token-type token)
       [(begin-object)
        (let1 dict (if-let1 thunk (json-object-fn)
@@ -207,7 +215,7 @@
 
 (define (parse-array class size scanner)
   (with-builder (class add! get :size size)
-    (let loop ([token (scanner)])
+    (let loop ([token (get-token scanner)])
       (if (eq? (token-type token) 'end-array)
         (get)
         (begin
