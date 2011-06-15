@@ -27,13 +27,12 @@
 ;; ---------------------------------------------------------
 ;; Conditions
 ;;
-(define-condition-type <json-read-error> <error> #f (position))
-(define-condition-type <json-write-error> <error> #f (object))
+(define-condition-type <json-read-error> <error> #f)
+(define-condition-type <json-write-error> <error> #f)
 
 
 ;; ---------------------------------------------------------
 ;; Alist Wrapper Class
->>>>>>> conditions
 ;;
 (define-class <alist> (<dictionary> <collection>)
   ([pairs :init-value '() :init-keyword :pairs]))
@@ -101,7 +100,7 @@
       (lambda ()
         (let loop ([c (read-char)])
           (cond [(eof-object? c)
-                 (errorf "unexpected EOF at ~a" (position))]
+                 (errorf <json-read-error> "unexpected EOF at ~a" (position))]
                 [(char=? c #\")]
                 [(char=? c #\\)
                  (write-char c)
@@ -146,7 +145,7 @@
             [(struct-char? c)
              => (cut make-token <> (read-char))]
             [else
-              (errorf "unexpected char: ~s at ~a" c (position))])))
+              (errorf <json-read-error> "unexpected char: ~s at ~a" c (position))])))
   (define (get)
     (if *token-buffer*
       (begin0 *token-buffer*
@@ -175,7 +174,7 @@
 (define (%position) ((*scanner*) 'position))
 
 (define (%raise-unexpected-token token)
-  (errorf "unexpected token: ~s at ~a"
+  (errorf <json-read-error> "unexpected token: ~s at ~a"
           (if (token? token) (token-value token) token)
           (%position)))
 
@@ -279,7 +278,7 @@
     [(true)  #t]
     [(false) #f]
     [(null)  'null]
-    [else => (cut errorf "unexpected literal: ~s at ~a" <> (%position))]))
+    [else => (cut errorf <json-read-error> "unexpected literal: ~s at ~a" <> (%position))]))
 
 (define (parse-number token)
   (define (exponent sign int frac expo)
