@@ -1,7 +1,7 @@
 ;;;
 ;;; text.json - read/write json
 ;;;
-
+;;;
 ;;; RFC4627  Javascript Object Notation (JSON)
 ;;; http://www.ietf.org/rfc/rfc4627
 
@@ -10,7 +10,7 @@
   (use gauche.parameter :only (make-parameter parameterize))
   (use gauche.sequence)
   (use srfi-13 :only (string-null? string-for-each))
-  (use text.parse :only (skip-while assert-curr-char next-token-of))
+  (use text.parse :only (skip-while next-token-of))
   (use util.match)
   (export json-mime-type
           json-object-fn
@@ -23,13 +23,11 @@
           ))
 (select-module text.json)
 
-
 ;; ---------------------------------------------------------
 ;; Conditions
 ;;
 (define-condition-type <json-read-error> <error> #f)
 (define-condition-type <json-write-error> <error> #f)
-
 
 ;; ---------------------------------------------------------
 ;; Alist Wrapper Class
@@ -94,6 +92,7 @@
       '(#\: . name-separator) '(#\, . value-separator)))
   (define (struct-char? c)
     (hash-table-get *struct-chars-table* c #f))
+
   (define (scan-string)
     (read-char)  ; skip '"'
     (with-output-to-string
@@ -109,6 +108,7 @@
                 [else
                   (write-char c)
                   (loop (read-char))])))))
+
   (define (scan-number)
     (define (sign)
       (case (peek-char)
@@ -129,8 +129,10 @@
         #f))
     (let* ([sign (sign)] [int (int)] [frac (frac)] [expo (exponent)])
       (list sign int frac expo)))
+
   (define (scan-literal)
     (next-token-of char-lower-case?))
+
   (define (scan)
     (skip-while *white-space-chars*)
     (let1 c (peek-char)
@@ -146,13 +148,16 @@
              => (cut make-token <> (read-char))]
             [else
               (errorf <json-read-error> "unexpected char: ~s at ~a" c (position))])))
+
   (define (get)
     (if *token-buffer*
       (begin0 *token-buffer*
         (set! *token-buffer* #f))
       (with-input-from-port iport scan)))
+
   (define (put! token)
     (set! *token-buffer* token))
+
   (define (position)
     #`",(port-position-prefix iport),(port-tell iport)")
 
@@ -161,7 +166,6 @@
     [('put! token) (put! token)]
     [('position) (position)]
     [badmsg (error "make-scanner -- unknown message:" badmsg)]))
-
 
 
 ;; ---------------------------------------------------------
@@ -257,28 +261,37 @@
                   [else (display cc)])))))))
 
 (define (parse-unicode-char)
-  (define (escaped->number)
-    (let1 hex4 (with-output-to-string
-                (lambda ()
-                  (dotimes (_ 4)
-                    (display (assert-curr-char #[0-9a-fA-F] "unexpected char")))))
-      (string->number hex4 16)))
-  (define (surrogate-pair hi)
-    (assert-curr-char #\\ "unexpected char")
-    (assert-curr-char #\u "unexpected char")
-    (let1 low (escaped->number)
-      (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF)))))
-  (let1 n (escaped->number)
-    (if (<= #xD800 n #xDBFF)
-      (surrogate-pair n)
-      (ucs->char n))))
+  (let-syntax ([%assert-char
+                 (syntax-rules ()
+                   [(_ expect)
+                    (rlet1 c (read-char)
+                      (unless (and (char? c) (char-set-contains? expect c))
+                        (errorf <json-read-error>
+                                "invalid unicode escape sequence at ~a"
+                                (%position))))])])
+    (define (escaped->number)
+      (let1 hex4 (with-output-to-string
+                   (lambda ()
+                     (dotimes (_ 4)
+                       (display (%assert-char #[0-9a-fA-F])))))
+        (string->number hex4 16)))
+    (define (surrogate-pair hi)
+      (%assert-char #\\)
+      (%assert-char #\u)
+      (let1 low (escaped->number)
+        (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF)))))
+    (let1 n (escaped->number)
+      (if (<= #xD800 n #xDBFF)
+        (surrogate-pair n)
+        (ucs->char n)))))
 
 (define (parse-literal token)
   (case (string->symbol (token-value token))
     [(true)  #t]
     [(false) #f]
     [(null)  'null]
-    [else => (cut errorf <json-read-error> "unexpected literal: ~s at ~a" <> (%position))]))
+    [else => (cut errorf <json-read-error>
+                  "unexpected literal: ~s at ~a" <> (%position))]))
 
 (define (parse-number token)
   (define (exponent sign int frac expo)
