@@ -456,8 +456,8 @@
 
 ;; Writer Parameter: json-indent-width
 ;;
-;;   This parameter specifies the number of to use for each step of indent
-;;   at pretty printing.
+;;   This parameter specifies the number of characters to indent at each
+;;   indentation level for pretty printing.
 (define json-indent-width
   (make-parameter 2
     (^n (or (and (integer? n) (>= n 0) (x->integer n))
@@ -479,6 +479,7 @@
         [else
           (error "output port required, but got" output)]))
 
+;; Same as json-write except that output was indented for easy to see.
 (define (json-write* obj :optional (output (current-output-port)))
   (parameterize ([%json-pretty-print? #t])
     (json-write obj output)))
