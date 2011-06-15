@@ -25,6 +25,13 @@
 
 
 ;; ---------------------------------------------------------
+;; Conditions
+;;
+(define-condition-type <json-read-error> <error> #f (position))
+(define-condition-type <json-write-error> <error> #f (object))
+
+
+;; ---------------------------------------------------------
 ;; Alist Wrapper Class
 ;;
 (define-class <alist> (<dictionary> <collection>)
