@@ -75,6 +75,7 @@
 (define (make-token type value) (vector type value))
 (define (token-type token) (vector-ref token 0))
 (define (token-value token) (vector-ref token 1))
+(define (token? token) (vector? token))
 
 (define (make-scanner iport)
   (define *token-buffer* #f)
@@ -86,6 +87,43 @@
       '(#\: . name-separator) '(#\, . value-separator)))
   (define (struct-char? c)
     (hash-table-get *struct-chars-table* c #f))
+  (define (scan-string)
+    (read-char)  ; skip '"'
+    (with-output-to-string
+      (lambda ()
+        (let loop ([c (read-char)])
+          (cond [(eof-object? c)
+                 (errorf "unexpected EOF at ~a" (position))]
+                [(char=? c #\")]
+                [(char=? c #\\)
+                 (write-char c)
+                 (write-char (read-char))
+                 (loop (read-char))]
+                [else
+                  (write-char c)
+                  (loop (read-char))])))))
+  (define (scan-number)
+    (define (sign)
+      (case (peek-char)
+        [(#\-) (read-char) -1]
+        [(#\+) (read-char)  1]
+        [else 1]))
+    (define (int)
+      (next-token-of char-numeric?))
+    (define (frac)
+      (if (char=? (peek-char) #\.)
+        (let1 dot (read-char)
+          #`",|dot|,(next-token-of char-numeric?)")
+        #f))
+    (define (exponent)
+      (if (char-set-contains? #[eE] (peek-char))
+        (let1 e (read-char)
+          #`",|e|,(next-token-of (pa$ char-set-contains? #[-+0-9]))")
+        #f))
+    (let* ([sign (sign)] [int (int)] [frac (frac)] [expo (exponent)])
+      (list sign int frac expo)))
+  (define (scan-literal)
+    (next-token-of char-lower-case?))
   (define (scan)
     (skip-while *white-space-chars*)
     (let1 c (peek-char)
@@ -100,7 +138,7 @@
             [(struct-char? c)
              => (cut make-token <> (read-char))]
             [else
-              (error "invalid JSON form")])))
+              (errorf "unexpected char: ~s at ~a" c (position))])))
   (define (get)
     (if *token-buffer*
       (begin0 *token-buffer*
@@ -109,7 +147,7 @@
   (define (put! token)
     (set! *token-buffer* token))
   (define (position)
-    (error "no implement"))
+    #`",(port-position-prefix iport),(port-tell iport)")
 
   (match-lambda*
     [('get) (get)]
@@ -121,55 +159,20 @@
 (define (unget-token! scanner token) (scanner 'put! token))
 (define (position scanner) (scanner 'position))
 
-(define (scan-string)
-  (read-char)  ; skip '"'
-  (with-output-to-string
-    (lambda ()
-      (let loop ([c (read-char)])
-        (cond [(eof-object? c)
-               (error "unexpected EOF")]
-              [(char=? c #\")]
-              [(char=? c #\\)
-               (write-char c)
-               (write-char (read-char))
-               (loop (read-char))]
-              [else
-                (write-char c)
-                (loop (read-char))])))))
-
-(define (scan-number)
-  (define (sign)
-    (case (peek-char)
-      [(#\-) (read-char) -1]
-      [(#\+) (read-char)  1]
-      [else 1]))
-  (define (int)
-    (next-token-of char-numeric?))
-  (define (frac)
-    (if (char=? (peek-char) #\.)
-      (let1 dot (read-char)
-        #`",|dot|,(next-token-of char-numeric?)")
-      #f))
-  (define (exponent)
-    (if (char-set-contains? #[eE] (peek-char))
-      (let1 e (read-char)
-        #`",|e|,(next-token-of (pa$ char-set-contains? #[-+0-9]))")
-      #f))
-  (let* ([sign (sign)] [int (int)] [frac (frac)] [expo (exponent)])
-    (list sign int frac expo)))
-
-(define (scan-literal)
-  (next-token-of char-lower-case?))
-
 
 ;; ---------------------------------------------------------
 ;; Parser
 ;;
+(define (%unexpected-token t scanner)
+  (errorf "unexpected token: ~s at ~a"
+          (if (token? t) (token-value t) t)
+          (position scanner)))
+
 (define (%assert-token scanner expected :optional (cmpfn memq))
   (let1 token (get-token scanner)
     (if (cmpfn (token-type token) expected)
       token
-      (error "unexpected token:" (token-value token)))))
+      (%unexpected-token token scanner))))
 
 (define (parse-json scanner)
   (let1 token (%assert-token scanner '(begin-object begin-array))
@@ -194,7 +197,7 @@
       [(string)  (parse-string (token-value token))]
       [(number)  (parse-number (token-value token))]
       [(literal) (parse-literal (token-value token))]
-      [else      (error "unexpected token:" (token-value token))])))
+      [else      (%unexpected-token token scanner)])))
 
 (define (parse-object dict scanner)
   (let/cc break
