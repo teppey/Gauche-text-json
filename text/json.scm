@@ -12,56 +12,16 @@
   (use srfi-13 :only (string-null? string-for-each))
   (use text.parse :only (skip-while assert-curr-char next-token-of))
   (use util.match :only (match match-lambda))
-  (export json-object-fn
+  (export json-mime-type
+          json-object-fn
           json-array-fn
           list-as-json-array
-          json-mime-type
+          json-indent-width
           json-read
           json-write
           json-write*
-          json-indent-width
           ))
 (select-module text.json)
-
-;; ---------------------------------------------------------
-;; Reader Parameters
-;;
-;;  json-object-fn : thunk | #f
-;;
-;;    Thunk must be returns instance of <dictionary>
-;;    subclass.  If this parameter value is set #f, JSON
-;;    object to be alist.
-;;
-(define json-object-fn
-  (make-parameter #f
-    (match-lambda
-      [#f #f]
-      [(? procedure? thunk) thunk]
-      [badarg (error "procedure or #f required, but got" badarg)])))
-
-;;
-;;  json-array-fn : thunk | #f
-;;
-;;    Thunk must be returns two values, <sequence> subclass
-;;    and size of array. Size may be a #f.
-;;
-(define json-array-fn
-  (make-parameter #f
-    (match-lambda
-      [#f #f]
-      [(? procedure? thunk) thunk]
-      [badarg (error "procedure or #f required, but got" badarg)])))
-
-;; ---------------------------------------------------------
-;; Writer Parameters
-;;
-(define list-as-json-array (make-parameter #f))
-(define %json-pretty-print? (make-parameter #f))
-(define %json-indent-level  (make-parameter 0))
-(define json-indent-width
-  (make-parameter 2
-    (^n (or (and (integer? n) (>= n 0) (x->integer n))
-            (error "required positive integer or zero, but got" n)))))
 
 
 ;; ---------------------------------------------------------
@@ -319,6 +279,9 @@
 ;; ---------------------------------------------------------
 ;; Writer
 ;;
+(define %json-pretty-print? (make-parameter #f))
+(define %json-indent-level  (make-parameter 0))
+
 (define (display-if-pretty arg)
   (when (%json-pretty-print?) (display arg)))
 
@@ -420,7 +383,50 @@
 ;; ---------------------------------------------------------
 ;; External API
 ;;
+
+;; RFC4627, Section 6
 (define-constant json-mime-type "application/json")
+
+;; Reader Parameter: json-object-fn
+;;
+;;   The value of this parameter specifies thunk or #f. Thunk must be
+;;   returns instance of <dictionary> subclass. The value was #f, JSON
+;;   object to be alist.
+(define json-object-fn
+  (make-parameter #f (match-lambda
+                       [#f #f]
+                       [(? procedure? thunk) thunk]
+                       [badarg (error "procedure or #f required, but got" badarg)])))
+
+
+;; Reader Parameter: json-array-fn
+;;
+;;   Parameter value is thunk or #f. Thunk must be returns two values;
+;;   <sequence> subclass and size. These values are used as call-with-
+;;   builder arguments.
+(define json-array-fn
+  (make-parameter #f (match-lambda
+                       [#f #f]
+                       [(? procedure? thunk) thunk]
+                       [badarg (error "procedure or #f required, but got" badarg)])))
+
+
+;; Writer Parameter: list-as-json-array
+;;
+;;   If a true value is given, list was formatted to JSON array. Otherwise,
+;;   writer regard list as alist, it format to JSON object.
+(define list-as-json-array (make-parameter #f))
+
+
+;; Writer Parameter: json-indent-width
+;;
+;;   This parameter specifies the number of to use for each step of indent
+;;   at pretty printing.
+(define json-indent-width
+  (make-parameter 2
+    (^n (or (and (integer? n) (>= n 0) (x->integer n))
+            (error "required positive integer or zero, but got" n)))))
+
 
 (define (json-read :optional (input (current-input-port)))
   (cond [(string? input)
@@ -441,5 +447,6 @@
 (define (json-write* obj :optional (output (current-output-port)))
   (parameterize ([%json-pretty-print? #t])
     (json-write obj output)))
+
 
 (provide "text/json")
