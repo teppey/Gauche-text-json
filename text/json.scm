@@ -101,8 +101,8 @@
         (let loop ([c (read-char)])
           (cond [(eof-object? c)
                  (errorf <json-read-error> "unexpected EOF at ~a" (position))]
-                [(char=? c #\")]
-                [(char=? c #\\)
+                [(eqv? c #\")]
+                [(eqv? c #\\)
                  (write-char c)
                  (write-char (read-char))
                  (loop (read-char))]
@@ -119,7 +119,7 @@
     (define (int)
       (next-token-of char-numeric?))
     (define (frac)
-      (if (char=? (peek-char) #\.)
+      (if (eqv? (peek-char) #\.)
         (let1 dot (read-char)
           #`",|dot|,(next-token-of char-numeric?)")
         #f))
@@ -139,7 +139,7 @@
     (let1 c (peek-char)
       (cond [(eof-object? c)
              (make-token 'eof (read-char))]
-            [(char=? c #\")
+            [(eqv? c #\")
              (make-token 'string (scan-string))]
             [(char-set-contains? #[-+0-9] c)
              (make-token 'number (scan-number))]
@@ -250,15 +250,15 @@
   (with-string-io (token-value token)
     (lambda ()
       (until (read-char) eof-object? => c
-        (if (not (char=? c #\\))
+        (if (not (eqv? c #\\))
           (display c)
           (let1 cc (read-char)
-            (cond [(char=? cc #\u) (display (parse-unicode-char))]
-                  [(char=? cc #\b) (display #\x08)]
-                  [(char=? cc #\f) (display #\page)]
-                  [(char=? cc #\n) (display #\newline)]
-                  [(char=? cc #\r) (display #\return)]
-                  [(char=? cc #\t) (display #\tab)]
+            (cond [(eqv? cc #\u) (display (parse-unicode-char))]
+                  [(eqv? cc #\b) (display #\x08)]
+                  [(eqv? cc #\f) (display #\page)]
+                  [(eqv? cc #\n) (display #\newline)]
+                  [(eqv? cc #\r) (display #\return)]
+                  [(eqv? cc #\t) (display #\tab)]
                   [else (display cc)])))))))
 
 (define (parse-unicode-char)
