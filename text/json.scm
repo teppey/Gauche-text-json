@@ -109,8 +109,8 @@
   (define (put! token)
     (set! *token-buffer* token))
   (define (position)
-    #f
-    )
+    (error "no implement"))
+
   (match-lambda*
     [('get) (get)]
     [('put! token) (put! token)]
