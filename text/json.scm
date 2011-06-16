@@ -259,7 +259,9 @@
             [(#\n) (display #\newline)]
             [(#\r) (display #\return)]
             [(#\t) (display #\tab)]
-            [else  => display]))))))
+            [(#\" #\\ #\/) => display]
+            [else (errorf <json-read-error>
+                          "invalid control character at ~a" (%position))]))))))
 
 (define (parse-unicode-char)
   (let-syntax ([%assert-char
