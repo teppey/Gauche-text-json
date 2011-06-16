@@ -302,6 +302,8 @@
         (* sign (* (exact->inexact (+ int frac))
                    (expt 10 (* exp-sign (string->number factor))))))))
   (match (token-value token)
+    [(_ (? #/^0\d+/ int) _ _)
+     (errorf <json-read-error> "leading zero: ~s at ~a" int (%position))]
     [(sign int #f #f)
      (* sign (string->number int))]
     [(sign int frac #f)
