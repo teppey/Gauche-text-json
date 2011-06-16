@@ -296,11 +296,12 @@
 
 (define (parse-number token)
   (define (exponent sign int frac expo)
-    (rxmatch-let (#/[eE]([-+])?(\d+)/ expo)
+    (rxmatch-if (#/[eE]([-+])?(\d+)/ expo)
       (#f exp-sign factor)
       (let1 exp-sign (or (and exp-sign (string=? exp-sign "-") -1) 1)
         (* sign (* (exact->inexact (+ int frac))
-                   (expt 10 (* exp-sign (string->number factor))))))))
+                   (expt 10 (* exp-sign (string->number factor))))))
+      (%raise-unexpected-token token)))
   (match (token-value token)
     [(_ (? #/^0\d+/ int) _ _)
      (errorf <json-read-error> "leading zero: ~s at ~a" int (%position))]
