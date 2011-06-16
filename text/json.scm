@@ -189,6 +189,12 @@
       token
       (%raise-unexpected-token token))))
 
+(define (%assert-char char/char-set :optional (msg "unexpected character"))
+  (let1 expect (if (char? char/char-set) (char-set char/char-set) char/char-set)
+    (rlet1 c (read-char)
+      (unless (and (char? c) (char-set-contains? expect c))
+        (errorf <json-read-error> "~a: ~s at ~a" msg c (%position))))))
+
 ;; parse entry point
 (define (parse-json iport)
   (parameterize ([*scanner* (make-scanner iport)])
@@ -247,46 +253,42 @@
               (loop token))))))))
 
 (define (parse-string token)
+  (define *unescaped* #[\u0020\u0021\u0023-\u005b\u005d-\U0010ffff])
+  (define (parse-escaped-string)
+    (case (read-char)
+      [(#\u) (display (parse-unicode-char))]
+      [(#\b) (display #\x08)]
+      [(#\f) (display #\page)]
+      [(#\n) (display #\newline)]
+      [(#\r) (display #\return)]
+      [(#\t) (display #\tab)]
+      [(#\" #\\ #\/) => display]
+      [else (errorf <json-read-error>
+                    "invalid control character at ~a" (%position))]))
+  (define (parse-unicode-char)
+    (define (escaped->number)
+      ((cut string->number <> 16)
+       (with-output-to-string
+         (lambda ()
+           (dotimes (_ 4)
+             (display (%assert-char #[0-9a-fA-F]
+                                    "invalide unicode escape sequence")))))))
+      (define (surrogate-pair hi)
+        (%assert-char #\\)
+        (%assert-char #\u)
+        (let1 low (escaped->number)
+          (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF)))))
+      (let1 n (escaped->number)
+        (if (<= #xD800 n #xDBFF)
+          (surrogate-pair n)
+          (ucs->char n))))
   (with-string-io (token-value token)
     (lambda ()
       (until (read-char) eof-object? => c
-        (if (not (eqv? c #\\))
-          (display c)
-          (case (read-char)
-            [(#\u) (display (parse-unicode-char))]
-            [(#\b) (display #\x08)]
-            [(#\f) (display #\page)]
-            [(#\n) (display #\newline)]
-            [(#\r) (display #\return)]
-            [(#\t) (display #\tab)]
-            [(#\" #\\ #\/) => display]
-            [else (errorf <json-read-error>
-                          "invalid control character at ~a" (%position))]))))))
-
-(define (parse-unicode-char)
-  (let-syntax ([%assert-char
-                 (syntax-rules ()
-                   [(_ expect)
-                    (rlet1 c (read-char)
-                      (unless (and (char? c) (char-set-contains? expect c))
-                        (errorf <json-read-error>
-                                "invalid unicode escape sequence at ~a"
-                                (%position))))])])
-    (define (escaped->number)
-      (let1 hex4 (with-output-to-string
-                   (lambda ()
-                     (dotimes (_ 4)
-                       (display (%assert-char #[0-9a-fA-F])))))
-        (string->number hex4 16)))
-    (define (surrogate-pair hi)
-      (%assert-char #\\)
-      (%assert-char #\u)
-      (let1 low (escaped->number)
-        (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF)))))
-    (let1 n (escaped->number)
-      (if (<= #xD800 n #xDBFF)
-        (surrogate-pair n)
-        (ucs->char n)))))
+        (cond [(char-set-contains? *unescaped* c) (display c)]
+              [(eqv? c #\\) (parse-escaped-string)]
+              [else (errorf <json-read-error>
+                      "unexpected character: ~s at ~a" c (%position))])))))
 
 (define (parse-literal token)
   (case (string->symbol (token-value token))
