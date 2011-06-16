@@ -252,14 +252,14 @@
       (until (read-char) eof-object? => c
         (if (not (eqv? c #\\))
           (display c)
-          (let1 cc (read-char)
-            (cond [(eqv? cc #\u) (display (parse-unicode-char))]
-                  [(eqv? cc #\b) (display #\x08)]
-                  [(eqv? cc #\f) (display #\page)]
-                  [(eqv? cc #\n) (display #\newline)]
-                  [(eqv? cc #\r) (display #\return)]
-                  [(eqv? cc #\t) (display #\tab)]
-                  [else (display cc)])))))))
+          (case (read-char)
+            [(#\u) (display (parse-unicode-char))]
+            [(#\b) (display #\x08)]
+            [(#\f) (display #\page)]
+            [(#\n) (display #\newline)]
+            [(#\r) (display #\return)]
+            [(#\t) (display #\tab)]
+            [else  => display]))))))
 
 (define (parse-unicode-char)
   (let-syntax ([%assert-char
