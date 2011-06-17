@@ -183,17 +183,25 @@
           (if (token? token) (token-value token) token)
           (%position)))
 
-(define (%assert-token expected :optional (cmpfn memq))
-  (let1 token (%get-token)
-    (if (cmpfn (token-type token) expected)
-      token
-      (%raise-unexpected-token token))))
+(define-syntax %assert-token
+  (syntax-rules ()
+    [(_ expected)
+     (%assert-token expected memq)]
+    [(_ expected cmpfn)
+     (let1 token (%get-token)
+       (if (cmpfn (token-type token) expected)
+         token
+         (%raise-unexpected-token token)))]))
 
-(define (%assert-char char/char-set :optional (msg "unexpected character"))
-  (let1 expect (if (char? char/char-set) (char-set char/char-set) char/char-set)
-    (rlet1 c (read-char)
-      (unless (and (char? c) (char-set-contains? expect c))
-        (errorf <json-read-error> "~a: ~s at ~a" msg c (%position))))))
+(define-syntax %assert-char
+  (syntax-rules ()
+    [(_ expect-char-set)
+     (%assert-char expect-char-set "unexpected character")]
+    [(_ expect-char-set msg)
+     (rlet1 c (read-char)
+       (unless (and (char? c) (char-set-contains? expect-char-set c))
+           (errorf <json-read-error> "~a: ~s at ~a" msg c (%position))))]))
+
 
 ;; parse entry point
 (define (parse-json iport)
@@ -274,8 +282,8 @@
              (display (%assert-char #[0-9a-fA-F]
                                     "invalide unicode escape sequence")))))))
       (define (surrogate-pair hi)
-        (%assert-char #\\)
-        (%assert-char #\u)
+        (%assert-char #[\\])
+        (%assert-char #[u])
         (let1 low (escaped->number)
           (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF)))))
       (let1 n (escaped->number)
