@@ -4,16 +4,22 @@
 
 (use gauche.test)
 (use gauche.parameter)
+(use gauche.collection)
+(use gauche.dictionary)
+(use gauche.sequence)
 (use file.util)
+(use srfi-1)
 
 (test-start "text.json")
 (use text.json)
 (test-module 'text.json)
 
 
+;; The following test section "read" and "write" based on
+;; ext/peg/test.scm
+
 (test-section "read")
 
-;; The following test cases based on Gauche-trunk/ext/peg/test.scm
 (define (test-primitive str val)
   (test* "primitive" `(("x" . ,val)) (json-read str)))
 (test-primitive "{\"x\": 100 }" 100)
@@ -149,18 +155,117 @@
         }
    }")
 
+;; object -> hash-table, array -> list
 (parameterize ([json-object-fn (cut make-hash-table 'string=?)]
                [json-array-fn  (cut values <list> #f)])
   (let1 o (json-read sample-json-text)
-    (test* "hashtable?" #t (is-a? o <hash-table>))
-    (test* "hashtable?" #t (is-a? (~ o "Image") <hash-table>))
-    (test* "list?" #t (is-a? (~ o "Image" "IDs") <list>))
-    (test* "lookup" "100" (~ o "Image" "Thumbnail" "Width"))))
+    (test* "hash-table?" #t (hash-table? o))
+    (test* "hash-table?" #t (hash-table? (~ o "Image")))
+    (test* "list?" #t (list? (~ o "Image" "IDs")))
+    (test* "list len" 4 (length (~ o "Image" "IDs")))
+    (test* "lookup" "100" (~ o "Image" "Thumbnail" "Width"))
+    ))
 
+;; treemap and specified array size
+(parameterize ([json-object-fn (cut make-tree-map string=? string<?)]
+               [json-array-fn (cut values <vector> 4)])
+  (let1 o (json-read sample-json-text)
+    (test* "tree-map?" #t (tree-map? o))
+    (test* "tree-map?" #t (tree-map? (~ o "Image")))
+    (test* "lookup" "100" (~ o "Image" "Thumbnail" "Width"))
+    (test* "key order" '("Height" "IDs" "Thumbnail" "Title" "Width")
+           (tree-map-keys (~ o "Image")))
+    (test* "vector" #(116 943 234 38793) (~ o "Image" "IDs"))
+    ))
+
+;; User defined dictoinary
+(define-class <my-dict> (<dictionary>)
+  ((keys :init-value '()) (values :init-value '())))
+
+(define x->symbol (.$ string->symbol x->string))
+
+(define-method dict-get ([d <my-dict>] [key <symbol>] . default)
+  (let1 default (get-optional default #f)
+    (or (and-let* ([p (assq key (zip (~ d 'keys) (~ d 'values)))])
+          (cadr p))
+        default)))
+
+(define-method dict-put! ([d <my-dict>] key value)
+  (let loop ([ks (~ d 'keys)] [vs (~ d 'values)])
+    (cond [(null? ks)
+           (set!-values ((~ d 'keys) (~ d 'values))
+                        (values (cons (x->symbol key) (~ d 'keys))
+                                (cons value (~ d 'values))))]
+          [(eq? (car ks) key) (set-car! vs value)]
+          [else (loop (cdr ks) (cdr vs))])))
+
+(define-method dict-exists? ([d <my-dict>] [key <symbol>])
+  (boolean (dict-get d key)))
+
+(define-method dict-delete! ([d <my-dict>] [key <symbol>])
+  (let1 key (x->symbol key)
+    (let loop ([ks (~ d 'keys)]   [new-ks '()]
+               [vs (~ d 'values)] [new-vs '()])
+      (cond [(null? ks)
+             (set!-values ((~ d 'keys) (~ d 'values))
+                          (values (reverse new-ks)
+                                  (reverse new-vs)))]
+            [(eq? (car ks) key)
+             (loop (cdr ks) (cdr vs) new-ks new-vs)]
+            [else
+              (loop (cdr ks) (cdr vs)
+                    (cons (car ks) new-ks)
+                    (cons (car vs) new-vs))]))))
+
+(define-method dict-fold ([d <my-dict>] proc seed)
+  (fold proc seed (~ d 'keys) (~ d 'values)))
+
+;; User defined sequence class
+(define-class <my-seq-meta> (<class>) ())
+(define-class <my-seq> (<sequence>)
+  ([elements :init-value '() :init-keyword :elements]
+   [len :init-value 0 :init-keyword :len])
+  :metaclass <my-seq-meta>)
+
+(define-method call-with-builder ([class <my-seq-meta>] proc . _)
+  (let* ([elements '()]
+         [add! (^e (push! elements (+ e 1)))]
+         [get (^() (let1 len (length elements)
+                     (make class :elements (reverse! elements) :len len)))])
+    (proc add! get)))
+
+(define-method referencer ([seq <my-seq>])
+  (lambda (seq index . rest)
+    (apply list-ref (~ seq 'elements) index rest)))
+
+(define-method modifier ([seq <my-seq>])
+  (lambda (seq index value)
+    (set! (~ (~ seq 'elements) index) value)))
+
+;; Testing user defined dictionary and sequence
+(parameterize ([json-object-fn (cut make <my-dict>)]
+               [json-array-fn (cut values <my-seq> #f)])
+  (let1 o (json-read sample-json-text)
+    (test* "<my-dict>" #t (is-a? o <my-dict>))
+    (test* "<my-seq>" #t (is-a? (dict-get (dict-get o 'Image) 'IDs) <my-seq>))
+    (test* "lookup" 125
+           (dict-get (dict-get (dict-get o 'Image) 'Thumbnail) 'Height))
+    (let* ([1+ (pa$ + 1)]
+           [seq (dict-get (dict-get o 'Image) 'IDs)])
+      (test* "seq +1" (1+ 116) (ref seq 0))
+      (test* "seq +1" (1+ 943) (ref seq 1))
+      (test* "seq +1" (1+ 234) (ref seq 2))
+      (test* "seq +1" (1+ 38793) (ref seq 3))
+      (dec! (ref seq 0))
+      (test* "modify seq" 116 (ref seq 0))
+      )
+    ))
+
+;; list -> JSON array
 (parameterize ([list-as-json-array #t])
-  (test* "hash-table -> object" "{\"foo\":1,\"bar\":2}"
-         (json-write (hash-table 'string=? '("foo" . 1) '("bar" . 2)) #f))
   (test* "list -> array" "[1,2,3]" (json-write '(1 2 3) #f))
+  (test* "alist is not object" (test-error)
+         (json-write '(("foo" . 1) ("bar" . 2))))
   )
 
 ;; Writer accepts only instance of <collection> except <string>

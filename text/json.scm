@@ -345,7 +345,7 @@
            (not (string? obj)))
     (format-any obj)
     (error <json-write-error>
-           "expect <collection> instance except <string>, bug got"
+           "expect <collection> instance except <string>, but got"
            obj)))
 
 (define (format-any obj)
