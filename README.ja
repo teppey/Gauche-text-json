@@ -36,9 +36,6 @@ Gauche 0.9.1よりrfc.json[2]モジュールが標準で添付されるため、
 ない機能(マッピングのカスタマイズ・出力のpretty print)が使いたいという
 ような場合、このモジュールは有用かもしれません。
 
-[1] http://www.ietf.org/rfc/rfc4627
-[2] http://practical-scheme.net/gauche/man/?l=jp&p=rfc.json
-
 
 Constant: json-mime-type
 
@@ -62,6 +59,7 @@ Function: json-read :optional input
       true         |   #t
       false        |   #f
       null         |   シンボルnull
+
 
 Function: json-write obj :optional output
 
@@ -96,14 +94,15 @@ Function: json-write obj :optional output
 Function: json-write* obj :optional output
 
   json-writeと同様にobjをJSON文字列として書き出しますが、出力は見やす
-  いようにインデントされます。インデント幅はjson-indent-widthパラメー
-  タを使って変更することができます。
+  いように空白文字でインデントされます。インデント幅は
+  json-indent-widthパラメータを使って変更することができます。
 
 
 Parameter: json-indent-width
 
   json-write*で出力されるJSONテキストのインデント幅を保持するパラメー
-  タです。
+  タです。インデント幅を変更するにはこのパラメータに非負の整数を与えま
+  す。
 
 
 マッピングのカスタマイズ
@@ -111,19 +110,51 @@ Parameter: json-indent-width
 
 Parameter: json-object-fn :optional thunk
 
-  thunkは引数を取らない手続きで、<dictionary>のサブクラスのインスタン
-  スを返さねばなりません。パーサーはこのインスタンスに対して
-  <dictionary>クラスのインターフェースを使用して値を追加します。
+  thunkは引数を取らない手続きで、<dictionary>クラスを継承したクラスの
+  インスタンスを返さねばなりません。パーサーはこのインスタンスに対し
+  gauche.dictionary[3]モジュールのディクショナリインターフェースを用いて
+  キーと値をセットします。
 
 
 Parameter: json-array-fn :optional thunk
 
   thunkは引数を取らない手続きで、呼ばれると2つの値を返さねばなりません。
   1つ目の値は<sequence>クラスを継承したクラスオブジェクトで、2つ目の値
-  は非負の整数か#fです。パーサーはこれらの値をcall-with-builderに渡し、
-  コレクションを作成します。
+  は配列のサイズを表す非負の整数です。配列のサイズがあらかじめ決まって
+  いない場合は、2つ目の値として#fを返します。パーサーは
+  call-with-builder[34をこれらの値とともに呼び出し、コレクションを生成
+  します。
+
+
+JSONオブジェクトをハッシュテーブルに、JSON配列をリストに変更してパーズ
+する例です。
+
+(parameterize ((json-object-fn (cut make-hash-table 'string=?))
+               (json-array-fn  (cut values <list> #f)))
+  (let1 ht (json-read "{\"foo\": 1, \"bar\": [2, 3]}")
+    (hash-table-get ht "foo")  ; => 1
+    (hash-table-get ht "bar")  ; => (2 3)
+   ))
 
 
 Parameter: list-as-json-array :optional bool
 
-  
+  このパラメータはSchemeオブジェクトをJSON文字列として書き出す場合に使
+  用します。通常json-writeおよびjson-write*は、リストを連想リストと見
+  なし、JSONオブジェクトとして出力します。このパラメータに真の値を与え
+  ることでこの挙動を変更し、リストはJSONの配列として書き出されるように
+  なります。
+
+  (parameterize ((list-as-json-array #t))
+    (json-write '(1 2 "hello"))  ; => [1,2,"hello"]
+    )
+
+
+
+参考
+----
+
+[1] http://www.ietf.org/rfc/rfc4627
+[2] http://practical-scheme.net/gauche/man/?l=jp&p=rfc.json
+[3] http://practical-scheme.net/gauche/man/?l=jp&p=gauche.dictionary
+[4] http://practical-scheme.net/gauche/man/?l=jp&p=call-with-builder
