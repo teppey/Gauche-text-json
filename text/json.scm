@@ -10,16 +10,14 @@
   (use gauche.parameter :only (make-parameter parameterize))
   (use gauche.sequence)
   (use text.parse :only (skip-while next-token-of))
-  (use util.match)
+  (use util.match :only (match match-lambda match-lambda*))
   (export <json-read-error>
           <json-write-error>
           json-mime-type
-
           json-object-fn
           json-array-fn
           list-as-json-array
           json-indent-string
-
           json-read
           json-write
           json-write*
@@ -93,8 +91,6 @@
       '(#\[ . begin-array ) '(#\] . end-array)
       '(#\{ . begin-object) '(#\} . end-object)
       '(#\: . name-separator) '(#\, . value-separator)))
-  (define (struct-char? c)
-    (hash-table-get *struct-chars-table* c #f))
 
   (define (scan-string)
     (read-char)  ; skip '"'
@@ -147,7 +143,7 @@
              (make-token 'number (scan-number))]
             [(char-set-contains? #[tfn] c)
              (make-token 'literal (scan-literal))]
-            [(struct-char? c)
+            [(hash-table-get *struct-chars-table* c #f)
              => (cut make-token <> (read-char))]
             [else
               (errorf <json-read-error> "unexpected char: ~s at ~a" c (position))])))
@@ -233,21 +229,19 @@
       [else      (%raise-unexpected-token token)])))
 
 (define (parse-object dict)
-  (let/cc break
-    (while #t
-      (let1 token (%assert-token '(string end-object))
-        (if (eq? (token-type token) 'end-object)
-          (break (unwrap dict))
-          (let1 key (parse-string token)
-            (%assert-token '(name-separator))
-            (let1 value (parse-any)
-              (dict-put! dict key value)
-              (let1 token (%assert-token '(value-separator end-object))
-                (case (token-type token)
-                  [(end-object) (break (unwrap dict))]
-                  [(value-separator)
-                   (let1 token (%assert-token '(string))
-                     (%unget-token! token))])))))))))
+  (let loop ([token (%assert-token '(string end-object))])
+    (if (eq? (token-type token) 'end-object)
+      (unwrap dict)
+      (let1 key (parse-string token)
+        (%assert-token '(name-separator))
+        (let1 value (parse-any)
+          (dict-put! dict key value)
+          (let1 token (%assert-token '(value-separator end-object))
+            (case (token-type token)
+              [(end-object)
+               (unwrap dict)]
+              [(value-separator)
+               (loop (%assert-token '(string)))])))))))
 
 (define (parse-array class size)
   (with-builder (class add! get :size size)
@@ -276,27 +270,39 @@
       [else (errorf <json-read-error>
                     "invalid control character at ~a" (%position))]))
   (define (parse-unicode-char)
-    (define (escaped->number)
-      ((cut string->number <> 16)
-       (with-output-to-string
-         (lambda ()
-           (dotimes (_ 4)
-             (display (%assert-char #[0-9a-fA-F]
-                                    "invalide unicode escape sequence")))))))
-      (define (surrogate-pair hi)
-        (%assert-char #[\\])
-        (%assert-char #[u])
-        (let1 low (escaped->number)
-          (ucs->char (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF)))))
+    (letrec-syntax
+      ([escaped->number
+         (syntax-rules ()
+           [(_) (let* ([msg "invalide unicode escape sequence"]
+                       [c1 (%assert-char #[0-9a-fA-F] msg)]
+                       [c2 (%assert-char #[0-9a-fA-F] msg)]
+                       [c3 (%assert-char #[0-9a-fA-F] msg)]
+                       [c4 (%assert-char #[0-9a-fA-F] msg)])
+                  (string->number (string c1 c2 c3 c4) 16))])]
+       [surrogate-pair
+         (syntax-rules ()
+           [(_ hi)
+            (begin
+              (%assert-char #[\\])
+              (%assert-char #[u])
+              (let1 low (escaped->number)
+                (ucs->char
+                  (+ #x10000 (ash (logand hi #x03FF) 10) (logand low #x03FF)))))])])
       (let1 n (escaped->number)
         (if (<= #xD800 n #xDBFF)
           (surrogate-pair n)
-          (ucs->char n))))
+          (ucs->char n)))))
+
   (with-string-io (token-value token)
     (lambda ()
-      (until (read-char) eof-object? => c
-        (cond [(char-set-contains? *unescaped* c) (display c)]
-              [(eqv? c #\\) (parse-escaped-string)]
+      (let loop ([c (read-char)])
+        (cond [(eof-object? c)]
+              [(char-set-contains? *unescaped* c)
+               (display c)
+               (loop (read-char))]
+              [(eqv? c #\\)
+               (parse-escaped-string)
+               (loop (read-char))]
               [else (errorf <json-read-error>
                       "unexpected character: ~s at ~a" c (%position))])))))
 
