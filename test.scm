@@ -371,11 +371,11 @@
 
 (test* "pp" "[
 1
-]" (parameterize ([json-indent-width 0]) (json-write* #(1) #f)))
+]" (parameterize ([json-indent-string #f]) (json-write* #(1) #f)))
 
 (test* "pp" "[
  1
-]" (parameterize ([json-indent-width 1]) (json-write* #(1) #f)))
+]" (parameterize ([json-indent-string " "]) (json-write* #(1) #f)))
 
 (test* "pp" "{
  \"foo\": 1,
@@ -383,8 +383,20 @@
   2,
   3
  ]
-}" (parameterize ([json-indent-width 1])
+}" (parameterize ([json-indent-string " "])
      (json-write* '(["foo" . 1] ["bar" . #(2 3)]) #f)))
+
+(test* "pp" "[
+	1
+]" (parameterize ([json-indent-string #\tab]) (json-write* #(1) #f)))
+
+(test* "pp" "[
+-->1
+]" (parameterize ([json-indent-string "-->"]) (json-write* #(1) #f)))
+
+(test* "pp" (test-error) (parameterize ([json-indent-string 1])
+                           (json-write* '(["foo" . 1] ["bar" . #(2 3)]) #f)))
+
 
 (test-section "json_checker")
 

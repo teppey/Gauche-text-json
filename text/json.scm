@@ -14,10 +14,12 @@
   (export <json-read-error>
           <json-write-error>
           json-mime-type
+
           json-object-fn
           json-array-fn
           list-as-json-array
-          json-indent-width
+          json-indent-string
+
           json-read
           json-write
           json-write*
@@ -330,23 +332,32 @@
 ;; ---------------------------------------------------------
 ;; Writer
 ;;
-(define %json-pretty-print? (make-parameter #f))
-(define %json-indent-level  (make-parameter 0))
+(define %json-current-indent (make-parameter #f))
 
-(define (display-if-pretty arg)
-  (when (%json-pretty-print?) (display arg)))
-
-(define (newline-and-indent)
-  (display-if-pretty #\newline)
-  (display-if-pretty
-    (make-string
-      (* (%json-indent-level) (json-indent-width)) #\space)))
+(define (make-indent level string)
+  (vector level string (with-output-to-string
+                         (^() (dotimes (_ level) (display string))))))
+(define (indent-level indent) (vector-ref indent 0))
+(define (indent-string indent) (vector-ref indent 1))
+(define (indent-computed indent) (vector-ref indent 2))
+(define (indent-more indent)
+  (and indent (make-indent (+ (indent-level indent) 1) (indent-string indent))))
 
 (define-syntax with-indent
   (syntax-rules ()
     [(_ body ...)
-     (parameterize ([%json-indent-level (+ 1 (%json-indent-level))])
-       body ...)]))
+     (parameterize ([%json-current-indent (indent-more (%json-current-indent))])
+         body ...)]))
+
+(define-syntax display-if-pretty
+  (syntax-rules ()
+    [(_ args ...)
+     (when (%json-current-indent)
+       (for-each display (list args ...)))]))
+
+(define (newline-and-indent)
+  (display-if-pretty #\newline (indent-computed (%json-current-indent))))
+
 
 (define (format-json obj)
   (if (and (is-a? obj <collection>)
@@ -469,14 +480,17 @@
 ;;   writer regard list as alist, it format to JSON object.
 (define list-as-json-array (make-parameter #f))
 
-;; Writer Parameter: json-indent-width
+;; Writer Parameter: json-indent-string
 ;;
-;;   This parameter specifies the number of characters to indent at each
-;;   indentation level for pretty printing.
-(define json-indent-width
-  (make-parameter 2
-    (^n (or (and (integer? n) (>= n 0) (x->integer n))
-            (error "required positive integer or zero, but got" n)))))
+;;   This parameter specifies the character, string, or #f. If a character
+;;   or string is given, it is used as indent string at each indentation
+;;   level. If parameter values is #f, output was not indented.
+(define json-indent-string
+  (make-parameter (make-string 2 #\space)
+                  (^v (cond [(not v) ""]
+                            [(char? v) (make-string 1 v)]
+                            [(string? v) v]
+                            [else (error "required char/string/#f, but got" v)]))))
 
 (define (json-read :optional (input (current-input-port)))
   (cond [(string? input)
@@ -496,7 +510,7 @@
 
 ;; Same as json-write except that output was indented for easy to see.
 (define (json-write* obj :optional (output (current-output-port)))
-  (parameterize ([%json-pretty-print? #t])
+  (parameterize ([%json-current-indent (make-indent 0 (json-indent-string))])
     (json-write obj output)))
 
 
