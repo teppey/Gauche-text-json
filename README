@@ -1,5 +1,12 @@
-This is text.json, read/write JSON; defined RFC4627 ``Javascript Object
-Notation''.
+This is text.json module, read/write JSON; defined RFC4627
+``Javascript Object Notation''.
+
+
+NOTICE: Because the rfc.json module is appended from Gauche 0.9.1 by
+the standard, this module need not usually be used. If it wants to use
+the function that you are not being offered with rfc.json at present
+(customizing mapping, pretty printing), this module might be useful.
+
 
 Requirements:
 
@@ -27,10 +34,6 @@ Module API:
 Module text.json
 ================
 
-This module offers the procedure that treats JSON(Javascript Object
-Notation) defined by RFC4627.
-
-[RFC4627] http://www.ietf.org/rfc/rfc4627
 
 Constant: json-mime-type
 
@@ -39,38 +42,128 @@ Constant: json-mime-type
 
 Function: json-read :optional input
 
-    This function takes input from current input port is assumed to be JSON
-    and the parse and the result are returned. Argument `input' that can be
-    omitted assumes it to be an input and does parse when specified by the
-    input port or string. As for the data type of JSON, the mapping is done
-    as follows:
+    This function takes input from current input port is assumed to be
+    JSON and the parse and the result are returned. Argument input
+    that can be omitted assumes it to be an input and does parse when
+    specified by the input port or string.
 
-             JSON    |   return value
-        -------------+-----------------
-            object   |   assoc list
-            array    |   vector
-            number   |   number
-            string   |   string
-            true     |   #t
-            false    |   #f
-            null     |   null (symbol)
+    As for the data type of JSON, the mapping is done as follows. The
+    mapping of the object and the array can be changed by using the
+    parameter described later.
+
+             JSON        return value
+        -------------------------------
+            object       assoc list
+            array        vector
+            number       number
+            string       string
+            true         #t
+            false        #f
+            null         null (symbol)
 
 
 Function: json-write obj :optional output
 
-    `obj' is written to a current output port as JSON string. Optional
-    argument `output' is output port or #f. If `output' is output port, the
-    result is written to the port.  If `output' is #f, the string is
-    returned as a return value of this function. As for argument `obj', the
-    mapping is done in the opposite direction to json-read. That is:
+    Obj is written to a current output port as JSON string. Optional
+    argument output is output port or #f. If output is output port,
+    the result is written to the port.  If output is #f, the string is
+    returned as a return value of this function.
 
-             obj        |   output(JSON)
-        ----------------+----------------
-          assoc list    |   object
-          vector        |   array
-          number        |   number
-          string        |   string
-          #t            |   true
-          #f            |   false
-          null (symbol) |   null
+    As for the output, the mapping is done by the class of obj as
+    follows. By default, the list is considered to be an association
+    list, and it outputs it as a JSON object. This behavior is changed
+    by giving the true value to the following list-as-json-array
+    parameter, list as a JSON array.
 
+        (class-of obj)                    JSON
+      -------------------------------------------------
+        <number>                          number
+
+        <string>                          string
+
+        <boolean> and (eq? obj #t)        true
+        <symbol>  and (eq? obj 'true)
+
+        <boolean> and (eq? obj #f)        false
+        <symbol>  and (eq? obj 'false)
+
+        <symbol>  and (eq? obj 'null)     null
+
+        <dictionary> or <list>            object
+
+        <sequence>                        array
+
+
+Function: json-write* obj :optional output
+
+  Same as json-write except that output was indented for easy to see.
+  The string used for the indent can be changed by using the
+  json-indent-string parameter.
+
+
+Parameter: json-indent-string
+
+  Json-write* function uses the value of this parameter for the
+  indent. It is possible to change by giving character, string, or #f.
+  When the character or string is specified, it is used for the
+  indent. When #f is specified, the indent is not done.
+
+
+
+Customize mapping
+-----------------
+
+Parameter: json-object-fn :optional thunk
+
+  Thunk is procedure that doesn't take the argument, it should return
+  the instance of the class that inherited from <dictionary> abstract
+  class.  The parser sets the key and the value by using the
+  dictionary interface of the gauche.dictionary module for this
+  instance.
+
+
+Parameter: json-array-fn :optional thunk
+
+
+  Thunk is procedure that doesn't take the argument, it should return
+  two values.  The first value is a class object that inherited
+  <sequence> class, and the second value is a nonnegative integer in
+  which the size of the array is shown. When the size of the array is
+  not decided beforehand, #f is returned as the second value. The
+  parser calls call-with-builder with these values, and generates the
+  collection.
+
+
+The following codes are samples that JSON object as hash table, and
+JSON array as list.
+
+  (parameterize ((json-object-fn (cut make-hash-table 'string=?))
+                 (json-array-fn  (cut values <list> #f)))
+    (let1 ht (json-read "{\"foo\": 1, \"bar\": [2, 3]}")
+      (hash-table-get ht "foo")  ; => 1
+      (hash-table-get ht "bar")  ; => (2 3)
+     ))
+
+
+Parameter: list-as-json-array :optional bool
+
+  When the Scheme object is written as JSON string, this parameter is
+  used. Normally, the list is considered to be an association list,
+  and json-write and json-write* are output as JSON object.  . If a
+  true value is given to this parameter, the list is changed so that
+  it is written as an array of JSON.
+
+    (parameterize ((list-as-json-array #t))
+      (json-write '(1 2 "hello"))  ; => [1,2,"hello"]
+      )
+
+
+
+References
+----------
+
+JavaScript Object Notation (JSON)
+<http://www.ietf.org/rfc/rfc4627>
+
+rfc.json - JSON parsing and construction
+http://practical-scheme.net/gauche/man/?l=en&p=rfc.json
