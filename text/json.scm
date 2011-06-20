@@ -340,14 +340,15 @@
 (define (indent-level indent) (vector-ref indent 0))
 (define (indent-string indent) (vector-ref indent 1))
 (define (indent-computed indent) (vector-ref indent 2))
-(define (indent-more indent)
-  (and indent (make-indent (+ (indent-level indent) 1) (indent-string indent))))
 
-(define-syntax with-indent
+(define-syntax increase-indent
   (syntax-rules ()
     [(_ body ...)
-     (parameterize ([%json-current-indent (indent-more (%json-current-indent))])
-         body ...)]))
+     (parameterize
+       ([%json-current-indent
+          (and-let* ([i (%json-current-indent)])
+            (make-indent (+ (indent-level i) 1) (indent-string i)))])
+       body ...)]))
 
 (define-syntax display-if-pretty
   (syntax-rules ()
@@ -418,7 +419,7 @@
 
 (define (format-object obj)
   (display #\{)
-  (with-indent
+  (increase-indent
     (dict-fold obj
       (^(key value comma)
         (display comma)
@@ -434,7 +435,7 @@
 
 (define (format-array obj)
   (display #\[)
-  (with-indent
+  (increase-indent
     (fold (^(value comma)
             (display comma)
             (newline-and-indent)
@@ -452,6 +453,7 @@
 ;; RFC4627, Section 6
 (define-constant json-mime-type "application/json")
 
+
 ;; Reader Parameter: json-object-fn
 ;;
 ;;   The value of this parameter specifies thunk or #f. Thunk must be
@@ -462,6 +464,7 @@
                        [#f #f]
                        [(? procedure? thunk) thunk]
                        [badarg (error "procedure or #f required, but got" badarg)])))
+
 
 ;; Reader Parameter: json-array-fn
 ;;
@@ -474,11 +477,13 @@
                        [(? procedure? thunk) thunk]
                        [badarg (error "procedure or #f required, but got" badarg)])))
 
+
 ;; Writer Parameter: list-as-json-array
 ;;
 ;;   If a true value is given, list was formatted to JSON array. Otherwise,
 ;;   writer regard list as alist, it format to JSON object.
 (define list-as-json-array (make-parameter #f))
+
 
 ;; Writer Parameter: json-indent-string
 ;;
@@ -491,6 +496,7 @@
                             [(char? v) (make-string 1 v)]
                             [(string? v) v]
                             [else (error "required char/string/#f, but got" v)]))))
+
 
 (define (json-read :optional (input (current-input-port)))
   (cond [(string? input)
