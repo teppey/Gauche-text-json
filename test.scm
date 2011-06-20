@@ -387,6 +387,9 @@
      (json-write* '(["foo" . 1] ["bar" . #(2 3)]) #f)))
 
 (test-section "json_checker")
+
+;; All test files are take from http://json.org/JSON_checker/test.zip
+
 (define (json-checker-name&path type num)
   (let1 name (format #f "~a~d" type num)
     (values name (build-path "." "json_checker" #`",|name|.json"))))
