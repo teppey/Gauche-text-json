@@ -1,105 +1,96 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset='utf-8'>
+  <head>
+    <meta charset='utf-8'>
 
-  <title>teppey/Gauche-text-json @ GitHub</title>
+    <title>teppey/Gauche-text-json @ GitHub</title>
 
-  <style type="text/css">
-    body {
-      margin-top: 1.0em;
-      background-color: #2abd95;
-      font-family: Helvetica, Arial, FreeSans, san-serif;
-      color: #ffffff;
-    }
-    #container {
-      margin: 0 auto;
-      width: 700px;
-    }
-    h1 { font-size: 3.8em; color: #d5426a; margin-bottom: 3px; }
-    h1 .small { font-size: 0.4em; }
-    h1 a { text-decoration: none }
-    h2 { font-size: 1.5em; color: #d5426a; }
-    h3 { text-align: center; color: #d5426a; }
-    a { color: #d5426a; }
-    .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
-    .download { float: right; }
-    pre { background: #000; color: #fff; padding: 15px;}
-    hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
-    .footer { text-align:center; padding-top:30px; font-style: italic; }
-  </style>
-</head>
+    <style type="text/css">
+      body {
+        margin-top: 1.0em;
+        background-color: white;
+        font-family: Helvetica, Arial, FreeSans, san-serif;
+        color: #333;
+      }
+      #container {
+        margin: 0 auto;
+        width: 700px;
+      }
+      h1 { font-size: 3.8em; color: #d5426a; margin-bottom: 3px; }
+      h1 .small { font-size: 0.4em; }
+      h1 a { text-decoration: none }
+      h2 { font-size: 1.5em; color: #d5426a; }
+      h3 { text-align: center; color: #d5426a; }
+      a { color: #d5426a; }
+      .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
+      .download { float: right; }
+      pre { background: #000; color: #fff; padding: 15px;}
+      hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
+      .footer { text-align:center; padding-top:30px; font-style: italic; }
+    </style>
+  </head>
 
-<body>
-  <a href="http://github.com/teppey/Gauche-text-json"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
+  <body>
+    <a href="http://github.com/teppey/Gauche-text-json"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
 
-  <div id="container">
+    <div id="container">
 
-    <div class="download">
-      <a href="http://github.com/teppey/Gauche-text-json/zipball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/zip.png"></a>
-      <a href="http://github.com/teppey/Gauche-text-json/tarball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
-    </div>
+      <div class="download">
+        <a href="http://github.com/teppey/Gauche-text-json/zipball/master">
+          <img border="0" width="90" src="http://github.com/images/modules/download/zip.png"></a>
+        <a href="http://github.com/teppey/Gauche-text-json/tarball/master">
+          <img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
+      </div>
 
-    <h1><a href="http://github.com/teppey/Gauche-text-json">Gauche-text-json</a>
-      <span class="small">by <a href="http://github.com/teppey">teppey</a></span></h1>
+      <h1><a href="http://github.com/teppey/Gauche-text-json">Gauche-text-json</a>
+        <span class="small">by <a href="http://github.com/teppey">teppey</a></span></h1>
 
-    <div class="description">
-      JSON read/write module for Gauche
-    </div>
+      <div class="description">
+        JSON read/write module for <a href="http://practical-scheme.net/gauche/">Gauche</a>
+      </div>
+      <p>
+        NOTICE: Because the <a href="http://practical-scheme.net/gauche/man/?l=en&p=rfc.json">rfc.json</a> module is appended from Gauche 0.9.1 by the standard, this module need not usually be used. If it wants to use the function that you are not being offered with rfc.json at present (customizing mapping, pretty printing), this module might be useful.
+      </p>
 
-    <p>This is text.json module, read/write JSON; defined RFC4627
-``Javascript Object Notation''.
+      <h2>Dependencies</h2>
+      <p>Gauche 0.9.1 or later</p>
+      <h2>Install</h2>
+      From tarball
+    <pre>$ gauche-package install [-S root] Gauche-text-json-0.2.tgz</pre>
+      From source
+      <pre>$ git clone git://github.com/teppey/Gauche-text-json.git   
+$ cd Gauche-text-json
+$ ./DIST gen
+$ ./configure
+$ make
+$ make -s check
+$ [sudo] make install</pre>
+      <h2>License</h2>
+      <p>New BSD License</p>
+      <h2>Authors</h2>
+      <p>Teppei Hamada (temada@gmail.com)</p>
+      <!--
+      <h2>Contact</h2>
+      <p>Teppei Hamada (temada@gmail.com)</p>
+      -->
 
-
-NOTICE: Because the rfc.json module is appended from Gauche 0.9.1 by
-the standard, this module need not usually be used. If it wants to use
-the function that you are not being offered with rfc.json at present
-(customizing mapping, pretty printing), this module might be useful.
-
-</p><h2>Dependencies</h2>
-<p>Gauche 0.9.1 or later</p>
-<h2>Install</h2>
-<p>From tarball                                                   
-                                                               
-    $ gauche-package install [-S root] Gauche-text-json-0.2.tgz
-                                                               
-From source                                                    
-                                                               
-    $ git clone git://github.com/teppey/Gauche-text-json.git   
-    $ cd Gauche-text-json                                      
-    $ ./DIST gen                                               
-    $ ./configure                                              
-    $ make                                                     
-    $ make -s check                                            
-    $ [sudo] make install                                      
-</p>
-<h2>License</h2>
-<p>New BSD License</p>
-<h2>Authors</h2>
-<p>Teppei Hamada (temada@gmail.com)<br/><br/>      </p>
-<h2>Contact</h2>
-<p>Teppei Hamada (temada@gmail.com)<br/>      </p>
-
-
-    <h2>Download</h2>
-    <p>
-      You can download this project in either
-      <a href="http://github.com/teppey/Gauche-text-json/zipball/master">zip</a> or
-      <a href="http://github.com/teppey/Gauche-text-json/tarball/master">tar</a> formats.
-    </p>
-    <p>You can also clone the project with <a href="http://git-scm.com">Git</a>
-      by running:
+      <h2>Download</h2>
+      <p>
+        You can download this project in either
+        <a href="http://github.com/teppey/Gauche-text-json/zipball/master">zip</a> or
+        <a href="http://github.com/teppey/Gauche-text-json/tarball/master">tar</a> formats.
+      </p>
+      <p>You can also clone the project with <a href="http://git-scm.com">Git</a>
+        by running:
       <pre>$ git clone git://github.com/teppey/Gauche-text-json</pre>
-    </p>
+        </p>
 
-    <div class="footer">
-      get the source code on GitHub : <a href="http://github.com/teppey/Gauche-text-json">teppey/Gauche-text-json</a>
-    </div>
+        <div class="footer">
+          get the source code on GitHub : <a href="http://github.com/teppey/Gauche-text-json">teppey/Gauche-text-json</a>
+        </div>
 
-  </div>
+      </div>
 
-  
-</body>
-</html>
+
+    </body>
+  </html>
