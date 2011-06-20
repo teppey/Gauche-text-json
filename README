@@ -133,8 +133,8 @@ Parameter: json-array-fn :optional thunk
   collection.
 
 
-The following codes are samples that JSON object as hash table, and
-JSON array as list.
+The following code is sample that JSON object as hash table, and JSON array
+as list.
 
   (parameterize ((json-object-fn (cut make-hash-table 'string=?))
                  (json-array-fn  (cut values <list> #f)))
