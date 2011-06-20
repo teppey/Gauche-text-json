@@ -124,7 +124,6 @@ Parameter: json-object-fn :optional thunk
 
 Parameter: json-array-fn :optional thunk
 
-
   Thunk is procedure that doesn't take the argument, it should return
   two values.  The first value is a class object that inherited
   <sequence> class, and the second value is a nonnegative integer in
