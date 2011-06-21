@@ -296,13 +296,13 @@
   (define *unescaped* #[\u0020\u0021\u0023-\u005b\u005d-\U0010ffff])
   (define (parse-escaped-string)
     (case (read-char)
-      [(#\u) (display (parse-unicode-char))]
-      [(#\b) (display #\x08)]
-      [(#\f) (display #\page)]
-      [(#\n) (display #\newline)]
-      [(#\r) (display #\return)]
-      [(#\t) (display #\tab)]
-      [(#\" #\\ #\/) => display]
+      [(#\u) (write-char (parse-unicode-char))]
+      [(#\b) (write-char #\x08)]
+      [(#\f) (write-char #\page)]
+      [(#\n) (write-char #\newline)]
+      [(#\r) (write-char #\return)]
+      [(#\t) (write-char #\tab)]
+      [(#\" #\\ #\/) => write-char]
       [else (errorf <json-read-error>
                     "invalid control character at ~a" (%position))]))
   (define (parse-unicode-char)
@@ -334,7 +334,7 @@
       (let loop ([c (read-char)])
         (cond [(eof-object? c)]
               [(char-set-contains? *unescaped* c)
-               (display c)
+               (write-char c)
                (loop (read-char))]
               [(eqv? c #\\)
                (parse-escaped-string)
@@ -442,14 +442,14 @@
     '(#\tab     . "\\t")))
 
 (define (format-string obj)
-  (display "\"")
+  (write-char #\")
   (with-input-from-string obj
     (lambda ()
       (until (read-char) eof-object? => c
         (if (char-set-contains? #[\x00-\x7f] c)
           (display (hash-table-get *escape-table* c c))
           (format #t "\\u~4,'0X" (char->ucs c))))))
-  (display "\""))
+  (write-char #\"))
 
 (define (format-literal-boolean obj)
   (display (if obj "true" "false")))
@@ -460,7 +460,7 @@
     (error <json-write-error> "unexpected symbol" obj)))
 
 (define (format-object obj)
-  (display #\{)
+  (write-char #\{)
   (increase-indent
     (dict-fold obj
       (^(key value comma)
@@ -473,10 +473,10 @@
         #\,)
       ""))
   (newline-and-indent)
-  (display #\}))
+  (write-char #\}))
 
 (define (format-array obj)
-  (display #\[)
+  (write-char #\[)
   (increase-indent
     (fold (^(value comma)
             (display comma)
@@ -485,7 +485,7 @@
             #\,)
           "" obj))
   (newline-and-indent)
-  (display #\]))
+  (write-char #\]))
 
 
 ;; ---------------------------------------------------------
