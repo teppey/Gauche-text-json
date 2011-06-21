@@ -96,6 +96,7 @@
 (define-method dict-exists? ((object <alist>) key)
   (boolean (assoc key (~ object 'pairs))))
 
+;; assoc list allows duplicate keys
 (define-method dict-delete! ((object <alist>) key)
   object)
 
