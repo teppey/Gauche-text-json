@@ -38,7 +38,7 @@
   (use gauche.dictionary)
   (use gauche.parameter :only (make-parameter parameterize))
   (use gauche.sequence)
-  (use text.parse :only (skip-while next-token-of))
+  (use text.parse :only (next-token-of peek-next-char))
   (use util.match :only (match match-lambda match-lambda*))
   (export <json-read-error>
           <json-write-error>
@@ -86,19 +86,18 @@
 
 ;; <dictionary> interface
 (define-method dict-get ((object <alist>) key . default)
-  (if-let1 p (assoc key (~ object 'pairs))
-    (cdr p)
-    (if (null? default) #f (car default))))
+  (or (and-let* ([p (assoc key (~ object 'pairs))])
+        (cdr p))
+      (if (null? default) #f (car default))))
 
 (define-method dict-put! ((object <alist>) key value)
-  (dict-delete! object key)
-  (set! (~ object 'pairs) (acons key value (~ object 'pairs))))
+  (push! (~ object 'pairs) (cons key value)))
 
 (define-method dict-exists? ((object <alist>) key)
   (boolean (assoc key (~ object 'pairs))))
 
 (define-method dict-delete! ((object <alist>) key)
-  (set! (~ object 'pairs) (remove (^p (equal? (car p) key)) (~ object 'pairs))))
+  object)
 
 (define-method dict-fold ((object <alist>) proc seed)
   (fold (^(pair seed)
@@ -122,6 +121,12 @@
       '(#\[ . begin-array ) '(#\] . end-array)
       '(#\{ . begin-object) '(#\} . end-object)
       '(#\: . name-separator) '(#\, . value-separator)))
+
+  (define (skip-ws)
+    (let loop ([c (peek-char)])
+      (when (and (not (eof-object? c))
+                 (char-set-contains? *white-space-chars* c))
+        (loop (peek-next-char)))))
 
   (define (scan-string)
     (read-char)  ; skip '"'
@@ -164,7 +169,7 @@
     (next-token-of char-lower-case?))
 
   (define (scan)
-    (skip-while *white-space-chars*)
+    (skip-ws)
     (let1 c (peek-char)
       (cond [(eof-object? c)
              (make-token 'eof (read-char))]
