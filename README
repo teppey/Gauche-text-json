@@ -51,15 +51,15 @@ Function: json-read :optional input
     mapping of the object and the array can be changed by using the
     parameter described later.
 
-             JSON        return value
-        -------------------------------
-            object       assoc list
-            array        vector
-            number       number
-            string       string
-            true         #t
-            false        #f
-            null         null (symbol)
+       JSON         return value
+      ----------------------------
+       object       assoc list
+       array        vector
+       number       number
+       string       string
+       true         #t
+       false        #f
+       null         null (symbol)
 
 
 Function: json-write obj :optional output
@@ -75,23 +75,23 @@ Function: json-write obj :optional output
     by giving the true value to the following list-as-json-array
     parameter, list as a JSON array.
 
-        (class-of obj)                    JSON
-      -------------------------------------------------
-        <number>                          number
-
-        <string>                          string
-
-        <boolean> and (eq? obj #t)        true
-        <symbol>  and (eq? obj 'true)
-
-        <boolean> and (eq? obj #f)        false
-        <symbol>  and (eq? obj 'false)
-
-        <symbol>  and (eq? obj 'null)     null
-
-        <dictionary> or <list>            object
-
-        <sequence>                        array
+      (class-of obj)                    JSON
+     ==========================================
+      <number>                          number
+     ------------------------------------------
+      <string>                          string
+     ------------------------------------------
+      <boolean> and (eq? obj #t)        true
+      <symbol>  and (eq? obj 'true)
+     ------------------------------------------
+      <boolean> and (eq? obj #f)        false
+      <symbol>  and (eq? obj 'false)
+     ------------------------------------------
+      <symbol>  and (eq? obj 'null)     null
+     ------------------------------------------
+      <dictionary> or <list>            object
+     ------------------------------------------
+      <sequence>                        array
 
 
 Function: json-write* obj :optional output
