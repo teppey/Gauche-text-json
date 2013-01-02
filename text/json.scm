@@ -1,7 +1,7 @@
 ;;;
 ;;; text.json - read/write JSON
 ;;;
-;;;  Copyright (c) 2011  Teppei Hamada  <temada@gmail.com>
+;;;  Copyright (c) 2011-2013  Teppei Hamada  <temada@gmail.com>
 ;;;
 ;;;  Redistribution and use in source and binary forms, with or without
 ;;;  modification, are permitted provided that the following conditions
